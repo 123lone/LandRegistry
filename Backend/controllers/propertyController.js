@@ -1,5 +1,5 @@
 const Property = require('../models/propertyModel');
-
+const User = require('../models/userModel');
 // @desc    Create a new property listing
 // @route   POST /api/properties
 // @access  Private/Seller
@@ -107,5 +107,57 @@ exports.verifyProperty = async (req, res) => {
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'Server error while verifying property.' });
+    }
+};
+
+// Add this function to /controllers/propertyController.js
+
+// @desc    Confirm a sale and update the database
+// @route   POST /api/properties/:id/confirm-sale
+// @access  Private
+// In /controllers/propertyController.js
+exports.confirmSale = async (req, res) => {
+    try {
+        console.log('--- Confirming Sale ---');
+        const { buyerWalletAddress, transactionHash } = req.body;
+        console.log('1. Received buyer wallet:', buyerWalletAddress);
+
+        if (!buyerWalletAddress || !transactionHash) {
+            console.log('Error: Missing required fields.');
+            return res.status(400).json({ message: 'Buyer wallet address and transaction hash are required.' });
+        }
+
+        console.log('2. Finding new owner in database...');
+        const newOwner = await User.findOne({ walletAddress: buyerWalletAddress });
+        
+        if (!newOwner) {
+            console.log('Error: Buyer user not found with that wallet address.');
+            return res.status(404).json({ message: 'Buyer not found in our database.' });
+        }
+        console.log('3. Found new owner:', newOwner.email);
+
+        console.log('4. Finding property with ID:', req.params.id);
+        const property = await Property.findById(req.params.id);
+
+        if (!property) {
+            console.log('Error: Property not found.');
+            return res.status(404).json({ message: 'Property not found' });
+        }
+        console.log('5. Found property:', property.title);
+
+        property.status = 'sold';
+        property.owner = newOwner._id;
+        property.transactionHash = transactionHash;
+        console.log('6. Updating property details...');
+
+        const updatedProperty = await property.save();
+        
+        console.log('7. Property saved successfully.');
+        res.json({ message: 'Sale confirmed and database updated.', property: updatedProperty });
+
+    } catch (error) {
+        // This block is likely not being reached, but is good to have.
+        console.error('!!! UNEXPECTED CRASH:', error);
+        res.status(500).json({ message: 'Server Error' });
     }
 };

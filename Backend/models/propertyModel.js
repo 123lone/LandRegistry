@@ -31,7 +31,11 @@ const propertySchema = new mongoose.Schema({
         type: String,
         enum: ['pending_verification', 'verified', 'listed_for_sale', 'sold'],
         default: 'pending_verification'
+    },
+    transactionHash: {
+        type: String,
     }
+    
 }, { timestamps: true });
 
 const Property = mongoose.model('Property', propertySchema);

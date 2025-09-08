@@ -1,5 +1,5 @@
 const express = require('express');
-const { createProperty, verifyProperty, listPropertyForSale, getMarketplaceProperties } = require('../controllers/propertyController');
+const { createProperty, verifyProperty, listPropertyForSale, getMarketplaceProperties, confirmSale } = require('../controllers/propertyController');
 // Import the new middleware
 const { protect, isVerifier, isVerifiedSeller } = require('../middlewares/authMiddleware');
 
@@ -11,5 +11,6 @@ router.route('/').post(protect, isVerifiedSeller, createProperty);
 router.route('/marketplace').get(protect, getMarketplaceProperties);
 router.route('/verify/:id').put(protect, isVerifier, verifyProperty);
 router.route('/list/:id').put(protect, listPropertyForSale);
+router.route('/:id/confirm-sale').post(protect, confirmSale);
 
 module.exports = router;
