@@ -1,0 +1,50 @@
+## Authentication Routes
+Register User
+
+POST http://localhost:5000/api/auth/register
+
+Login User
+
+POST http://localhost:5000/api/auth/login
+
+Logout User
+
+POST http://localhost:5000/api/auth/logout
+
+## KYC Route
+Upload Aadhaar Document
+
+POST http://localhost:5000/api/kyc/upload
+
+## Verifier (Admin) Routes
+Get Users Pending KYC Review
+
+GET http://localhost:5000/api/verifier/pending-users
+
+Update User KYC Status (Approve/Reject)
+
+PUT http://localhost:5000/api/verifier/users/:id/status
+(Replace :id with the actual user's ID)
+
+Get Properties Pending Verification
+
+GET http://localhost:5000/api/verifier/pending-properties
+
+## Property Routes
+Create a New Property
+
+POST http://localhost:5000/api/properties
+
+Verify a Property (Verifier Only)
+
+PUT http://localhost:5000/api/properties/verify/:id
+(Replace :id with the actual property's ID)
+
+List a Verified Property for Sale (Seller Only)
+
+PUT http://localhost:5000/api/properties/list/:id
+(Replace :id with the actual property's ID)
+
+View Marketplace (All listed properties)
+
+GET http://localhost:5000/api/properties/marketplace
