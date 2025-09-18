@@ -1,42 +1,18 @@
-const mongoose = require('mongoose');
+import mongoose from 'mongoose';
 
 const propertySchema = new mongoose.Schema({
-    owner: {
-        type: mongoose.Schema.Types.ObjectId,
-        required: true,
-        ref: 'User' // This creates a link to the User model
-    },
-    title: {
-        type: String,
-        required: true,
-        trim: true
-    },
-    description: {
-        type: String,
-        required: true
-    },
-    location: {
-        type: String,
-        required: true
-    },
-    price: {
-        type: Number,
-        required: true
-    },
-    documentHashes: {
-        type: [String], // An array of strings
-        required: true
-    },
-    status: {
-        type: String,
-        enum: ['pending_verification', 'verified', 'listed_for_sale', 'sold'],
-        default: 'pending_verification'
-    },
-    transactionHash: {
-        type: String,
-    }
-    
+  tokenId: { type: String, required: true }, // Store NFT token ID
+  surveyNumber: { type: String, required: true },
+  propertyId: { type: String, required: true },
+  propertyAddress: { type: String, required: true },
+  area: { type: Number, required: true },
+  ownerWalletAddress: { type: String, required: true },
+  ownerName: { type: String, required: true },
+  description: { type: String, default: '' },
+  documentHashes: { type: [String], required: true }, // Array of IPFS hashes
+  status: { type: String, default: 'pending', enum: ['pending', 'verified', 'listed_for_sale', 'sold'] },
+  owner: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true }, // MongoDB user reference
+  verifier: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true }, // Verifier who registered
 }, { timestamps: true });
 
-const Property = mongoose.model('Property', propertySchema);
-module.exports = Property;
+export default mongoose.model('Property', propertySchema);

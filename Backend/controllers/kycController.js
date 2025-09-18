@@ -1,7 +1,7 @@
-const User = require('../models/userModel');
+import User from '../models/userModel.js';
 
 // In /controllers/kycController.js
-exports.uploadAadhaar = async (req, res) => {
+export const uploadAadhaar = async (req, res) => {
     console.log('--- KYC Upload Process Started ---');
     
     // 1. Check if Multer processed the file
@@ -13,7 +13,7 @@ exports.uploadAadhaar = async (req, res) => {
 
     try {
         const user = await User.findById(req.user.id);
-        console.log('User found in DB:', user.email);
+        console.log('User found in DB:', user?.email);
 
         if (user) {
             // 2. Assign the status and path

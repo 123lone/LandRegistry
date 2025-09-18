@@ -9,32 +9,66 @@ contract PropertyTitle is ERC721, Ownable {
     using Counters for Counters.Counter;
     Counters.Counter private _tokenIds;
 
-    mapping(uint256 => string) public documentHashes;
-    mapping(uint256 => bool) private _verified;
+    struct PropertyDetails {
+        string surveyNumber;
+        string propertyId;
+        string propertyAddress;
+        uint256 area;
+        string ownerName;
+        string description;
+        string[] documentHashes;
+        bool verified;
+    }
 
-    event TitleMinted(uint256 indexed tokenId, address indexed owner, string documentHash);
+    mapping(uint256 => PropertyDetails) public propertyDetails;
+
+    event TitleMinted(uint256 indexed tokenId, address indexed owner, string[] documentHashes);
     event TitleVerified(uint256 indexed tokenId, bool verified);
 
-    constructor() ERC721("Land Registry Title", "LRT") Ownable(msg.sender) {}
+    constructor() ERC721("Land Registry Title", "LRT") Ownable() {}
 
-    function mintTitle(address to, string memory documentHash) external onlyOwner returns (uint256) {
+    // Removed onlyOwner
+    function mintTitle(
+        address to,
+        string memory surveyNumber,
+        string memory propertyId,
+        string memory propertyAddress,
+        uint256 area,
+        string memory ownerName,
+        string memory description,
+        string[] memory documentHashes
+    ) external returns (uint256) {
         _tokenIds.increment();
         uint256 newId = _tokenIds.current();
         _safeMint(to, newId);
-        documentHashes[newId] = documentHash;
-        _verified[newId] = false;
-        emit TitleMinted(newId, to, documentHash);
+        propertyDetails[newId] = PropertyDetails({
+            surveyNumber: surveyNumber,
+            propertyId: propertyId,
+            propertyAddress: propertyAddress,
+            area: area,
+            ownerName: ownerName,
+            description: description,
+            documentHashes: documentHashes,
+            verified: false
+        });
+        emit TitleMinted(newId, to, documentHashes);
         return newId;
     }
 
-    function setVerified(uint256 tokenId, bool status) external onlyOwner {
+    // Removed onlyOwner
+    function setVerified(uint256 tokenId, bool status) external {
         require(_ownerOf(tokenId) != address(0), "Nonexistent token");
-        _verified[tokenId] = status;
+        propertyDetails[tokenId].verified = status;
         emit TitleVerified(tokenId, status);
     }
 
     function isVerified(uint256 tokenId) external view returns (bool) {
         require(_ownerOf(tokenId) != address(0), "Nonexistent token");
-        return _verified[tokenId];
+        return propertyDetails[tokenId].verified;
+    }
+
+    function getPropertyDetails(uint256 tokenId) external view returns (PropertyDetails memory) {
+        require(_ownerOf(tokenId) != address(0), "Nonexistent token");
+        return propertyDetails[tokenId];
     }
 }

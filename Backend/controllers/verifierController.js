@@ -1,12 +1,12 @@
-const User = require('../models/userModel');
-const Property = require('../models/propertyModel');
-const path = require('path');
-const fs = require('fs');
+import User from '../models/userModel.js';
+import Property from '../models/propertyModel.js';
+import path from 'path';
+import fs from 'fs';
 
 // @desc    Get all users pending KYC verification
 // @route   GET /api/verifier/pending-users
 // @access  Private/Verifier
-exports.getPendingUsers = async (req, res) => {
+export const getPendingUsers = async (req, res) => {
     try {
         const pendingUsers = await User.find({ kycStatus: 'review_pending' }).select('-password');
         res.json(pendingUsers);
@@ -14,11 +14,32 @@ exports.getPendingUsers = async (req, res) => {
         res.status(500).json({ message: 'Server Error' });
     }
 };
+export const getVerifiedUsers = async (req, res) => {
+  try {
+    const verifiedUsers = await User.find({
+      kycStatus: 'verified',
+      role: { $in: ['Owner', 'Land Owner', 'Buyer'] } // <-- filter here
+    })
+      .select('-password')
+      .sort({ updatedAt: -1 }); // most recently updated first
 
+    res.json({
+      success: true,
+      count: verifiedUsers.length,
+      data: verifiedUsers
+    });
+  } catch (error) {
+    console.error('Error fetching verified users:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error while fetching verified users'
+    });
+  }
+};
 // @desc    View a specific user's Aadhaar document
 // @route   GET /api/verifier/users/:id/document
 // @access  Private/Verifier
-exports.viewAadhaarDocument = async (req, res) => {
+export const viewAadhaarDocument = async (req, res) => {
     try {
         const user = await User.findById(req.params.id);
         if (!user || !user.aadhaarDocumentPath) {
@@ -39,7 +60,7 @@ exports.viewAadhaarDocument = async (req, res) => {
 // @desc    Get all properties pending verification
 // @route   GET /api/verifier/pending-properties
 // @access  Private/Verifier
-exports.getPendingProperties = async (req, res) => {
+export const getPendingProperties = async (req, res) => {
     try {
         const properties = await Property.find({ status: 'pending_verification' })
             .populate('owner', 'name email');
@@ -52,7 +73,7 @@ exports.getPendingProperties = async (req, res) => {
 // @desc    Update a user's KYC status (and delete doc if verified)
 // @route   PUT /api/verifier/users/:id/status
 // @access  Private/Verifier
-exports.updateUserKycStatus = async (req, res) => {
+export const updateUserKycStatus = async (req, res) => {
     const { status } = req.body;
 
     if (!status || !['verified', 'rejected'].includes(status)) {

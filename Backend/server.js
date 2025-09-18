@@ -1,13 +1,20 @@
-const express = require('express');
-const dotenv = require('dotenv');
-const cors = require('cors');
-const cookieParser = require('cookie-parser');
-const path = require('path');
-const connectDB = require('./config/db');
-const authRoutes = require('./routes/authRoutes');
-const kycRoutes = require('./routes/kycRoutes');
-const propertyRoutes = require('./routes/propertyRoutes');
-const verifierRoutes = require('./routes/verifierRoutes');
+import express from 'express';
+import dotenv from 'dotenv';
+import cors from 'cors';
+import cookieParser from 'cookie-parser';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+import connectDB from './config/db.js';
+import authRoutes from './routes/authRoutes.js';
+import kycRoutes from './routes/kycRoutes.js';
+import propertyRoutes from './routes/propertyRoutes.js';
+import verifierRoutes from './routes/verifierRoutes.js';
+
+// ESM doesn’t have __dirname / __filename by default
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 // Load environment variables
 dotenv.config();
 
@@ -23,11 +30,13 @@ app.use(cors({
 }));
 app.use(express.json());
 app.use(cookieParser());
+
+// Routes
 app.use('/api/verifier', verifierRoutes);
-// API Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/kyc', kycRoutes);
 app.use('/api/properties', propertyRoutes);
+
 const PORT = process.env.PORT || 5000;
 
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));

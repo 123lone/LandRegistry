@@ -1,72 +1,83 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { ethers, BrowserProvider } from 'ethers';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { BrowserProvider } from 'ethers';
 
 const WalletContext = createContext();
 
 export const WalletProvider = ({ children }) => {
-  const [accounts, setAccounts] = useState([]);
-  const [provider, setProvider] = useState(null);
-  const [signer, setSigner] = useState(null);
-  const [userRole, setUserRole] = useState(null); // New state for user role
+    const [account, setAccount] = useState(null);
+    const [provider, setProvider] = useState(null);
+    const [signer, setSigner] = useState(null);
+    const [userRole, setUserRole] = useState(null);
+    const [error, setError] = useState('');
 
-  useEffect(() => {
-    const initializeProvider = async () => {
-      if (window.ethereum) {
-        try {
-          const ethersProvider = new BrowserProvider(window.ethereum);
-          setProvider(ethersProvider);
-          const currentSigner = await ethersProvider.getSigner();
-          setSigner(currentSigner);
-
-          window.ethereum.on('accountsChanged', (newAccounts) => {
-            if (newAccounts.length === 0) {
-              setAccounts([]);
-              setUserRole(null); // Reset role on disconnect
-            } else {
-              setAccounts(newAccounts);
-            }
-          });
-
-          const initialAccounts = await ethersProvider.listAccounts();
-          if (initialAccounts.length > 0) {
-            setAccounts(initialAccounts);
-            // In a real app, you'd fetch the role from your backend here
-            // For now, let's assume they are a Land Owner by default for the demo
-            setUserRole('landOwner');
-          }
-        } catch (error) {
-          console.error("Error initializing wallet provider:", error);
+    // This function centralizes the logic for updating the wallet state
+    const updateWallet = useCallback(async (accounts) => {
+        if (accounts.length > 0) {
+            const currentAccount = accounts[0];
+            setAccount(currentAccount);
+            
+            const ethersProvider = new BrowserProvider(window.ethereum);
+            const currentSigner = await ethersProvider.getSigner();
+            setProvider(ethersProvider);
+            setSigner(currentSigner);
+            setError('');
+        } else {
+            setAccount(null);
+            setProvider(null);
+            setSigner(null);
+            setUserRole(null);
         }
-      }
+    }, []);
+
+
+    useEffect(() => {
+        if (typeof window.ethereum === 'undefined') {
+            setError('MetaMask is not installed.');
+            return;
+        }
+
+        // Listen for account changes
+        const handleAccountsChanged = (accounts) => updateWallet(accounts);
+        window.ethereum.on('accountsChanged', handleAccountsChanged);
+
+        // Check for existing connected accounts on page load
+        const checkExistingConnection = async () => {
+            const accounts = await window.ethereum.request({ method: 'eth_accounts' });
+            await updateWallet(accounts);
+        };
+        checkExistingConnection();
+
+        // Cleanup listener on component unmount
+        return () => {
+            window.ethereum.removeListener('accountsChanged', handleAccountsChanged);
+        };
+    }, [updateWallet]);
+
+    const connectWallet = async (role) => {
+        if (typeof window.ethereum === 'undefined') {
+            setError('MetaMask is not installed.');
+            return null;
+        }
+
+        try {
+            const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+            await updateWallet(accounts);
+            setUserRole(role); // Set role based on which button was clicked
+            return accounts[0]; // Return the connected account
+        } catch (err) {
+            console.error("Connection request failed:", err);
+            setError('User denied account access.');
+            return null;
+        }
     };
-    initializeProvider();
 
-    return () => {
-      if (window.ethereum) {
-        window.ethereum.removeAllListeners('accountsChanged');
-      }
-    };
-  }, []);
+    const value = { account, connectWallet, provider, signer, userRole, error };
 
-  const connectWallet = async (role) => {
-    if (!window.ethereum) {
-      alert("MetaMask is not installed. Please install it to continue.");
-      return;
-    }
-    try {
-      const newAccounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
-      setAccounts(newAccounts);
-      setUserRole(role); // Set the role based on which button was clicked
-    } catch (error) {
-      console.error("User denied account access:", error);
-    }
-  };
-
-  return (
-    <WalletContext.Provider value={{ accounts, connectWallet, provider, signer, userRole }}>
-      {children}
-    </WalletContext.Provider>
-  );
+    return (
+        <WalletContext.Provider value={value}>
+            {children}
+        </WalletContext.Provider>
+    );
 };
 
 export const useWallet = () => useContext(WalletContext);

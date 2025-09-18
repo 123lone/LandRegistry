@@ -1,30 +1,38 @@
 import React from 'react';
+import { useAuth } from '../../context/AuthContext';
 
 const OwnerProfile = () => {
-  const profile = {
-    name: "Sahil Patil",
-    address: "0x74aC...1D23",
-    email: "sahil.patil@example.com",
-    propertiesOwned: 5,
-    totalValue: "120 ETH"
-  };
+  const { user } = useAuth();
 
+  // The component no longer manages loading or error states.
+  // It assumes the AuthContext provides a complete user object.
+  if (!user) {
+    return <div>Please log in to view your profile.</div>;
+  }
+
+  // The original UI is kept, but the data source is simplified.
   return (
     <div>
-      <h1 className="text-3xl font-bold text-gray-800 mb-6">Welcome, {profile.name}</h1>
+      <h1 className="text-3xl font-bold text-gray-800 mb-6">Welcome, {user.name || 'User'}</h1>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="bg-gray-100 p-6 rounded-lg shadow-inner">
           <h2 className="text-xl font-semibold text-gray-700 mb-4">Your Profile</h2>
           <div className="space-y-2">
-            <p><strong>Wallet Address:</strong> {profile.address}</p>
-            <p><strong>Email:</strong> {profile.email}</p>
+            {/* This data still comes directly from the user object */}
+            <p><strong>Wallet Address:</strong> {user.walletAddress || 'Not connected'}</p>
+            <p><strong>Email:</strong> {user.email || 'N/A'}</p>
           </div>
         </div>
         <div className="bg-gray-100 p-6 rounded-lg shadow-inner">
           <h2 className="text-xl font-semibold text-gray-700 mb-4">Your Properties</h2>
           <div className="space-y-2">
-            <p><strong>Properties Owned:</strong> {profile.propertiesOwned}</p>
-            <p><strong>Total Value:</strong> {profile.totalValue}</p>
+            {/* KEY CHANGE:
+              Instead of reading from a separate 'profileData' state,
+              we now read 'propertiesOwned' and 'totalValue' directly 
+              from the main 'user' object from the context.
+            */}
+            <p><strong>Properties Owned:</strong> {user.propertiesOwned || 0}</p>
+            <p><strong>Total Value:</strong> {user.totalValue ? `${user.totalValue} ETH` : '0 ETH'}</p>
           </div>
         </div>
       </div>
