@@ -84,10 +84,10 @@ const handleConnectWallet = async () => {
 
     // Convert to decimal number for comparison
     const chainIdDecimal = parseInt(currentChainId, 16);
-    if (chainIdDecimal !== 1337) { // Ganache default chainId
-      alert("Please switch MetaMask to the Ganache network!");
-      return;
-    }
+    // if (chainIdDecimal !== 1337) { // Ganache default chainId
+    //   alert("Please switch MetaMask to the Ganache network!");
+    //   return;
+    // }
     await window.ethereum.request({ method: 'eth_chainId' });
 
 

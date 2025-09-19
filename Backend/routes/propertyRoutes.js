@@ -1,11 +1,21 @@
 import express from 'express';
 import multer from 'multer';
-import { createProperty, verifyProperty, listPropertyForSale, getMarketplaceProperties, confirmSale, getMyProperties, getPropertyById } from '../controllers/propertyController.js';
+// Import the new controller functions and remove createProperty
+import { 
+    prepareMint, 
+    executeMint, 
+    verifyProperty, 
+    listPropertyForSale, 
+    getMarketplaceProperties, 
+    confirmSale, 
+    getMyProperties, 
+    getPropertyById 
+} from '../controllers/propertyController.js';
 import { protect, isVerifier, isVerifiedSeller } from '../middlewares/authMiddleware.js';
 
 const router = express.Router();
 
-// Configure multer
+// Configure multer (this part is correct)
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     cb(null, 'uploads/'); // Ensure this directory exists
@@ -26,18 +36,24 @@ const upload = multer({
   limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
 });
 
-// Create a new property (only verifiers)
-router.route('/').post(
+// === NEW ROUTES FOR SIGNATURE WORKFLOW ===
+
+// Step 1: Prepare the hash for the user to sign
+router.route('/prepare-mint').post(protect, isVerifier, prepareMint);
+
+// Step 2: Execute the minting with the signature and files
+router.route('/execute-mint').post(
   protect,
   isVerifier,
   upload.fields([
     { name: 'motherDeed', maxCount: 1 },
     { name: 'encumbranceCertificate', maxCount: 1 },
   ]),
-  createProperty
+  executeMint
 );
 
-// Other routes
+
+// === OTHER EXISTING ROUTES ===
 router.route('/my').get(protect, getMyProperties);
 router.route('/marketplace').get(protect, getMarketplaceProperties);
 router.route('/verify/:id').put(protect, isVerifier, verifyProperty);
