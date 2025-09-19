@@ -4,9 +4,9 @@ async function main() {
   const [deployer] = await hre.ethers.getSigners();
   console.log("Deploying contracts with the account:", deployer.address);
 
-  // 1. Deploy the PropertyTitle contract with deployer as initialOwner
+  // 1. Deploy the PropertyTitle contract
   const PropertyTitle = await hre.ethers.getContractFactory("PropertyTitle");
-  const propertyTitle = await PropertyTitle.deploy(deployer.address); // ✅ pass initialOwner
+  const propertyTitle = await PropertyTitle.deploy();
   await propertyTitle.deployed();
   console.log("PropertyTitle deployed to:", propertyTitle.address);
 
