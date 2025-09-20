@@ -8,7 +8,7 @@ module.exports = {
       // Replace the 'accounts' array with this object
       accounts: {
         mnemonic:
-          "there visa sister monitor salt thunder machine swift long crunch make obtain",
+          "advice despair question tired toy trend below pull drama ice path modify",
         count: 10, // Optional: specifies how many accounts to derive
       },
     },

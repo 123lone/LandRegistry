@@ -1,43 +1,42 @@
-// src/context/BuyerContext.jsx
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { useAuth } from './AuthContext';
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useCallback,
+} from "react";
+import { useAuth } from "./AuthContext";
 
 const BuyerContext = createContext(null);
 
 export const BuyerProvider = ({ children }) => {
-  const { user, isAuthenticated } = useAuth();
+  // Get the full auth state, including the token
+  const { user, isAuthenticated, token } = useAuth();
   const [isVerified, setIsVerified] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Local helper: Normalize user ID without changing AuthContext
   const getUserId = (userObj) => {
     if (!userObj) return null;
-    return userObj.id || userObj._id; // Fallback to _id if id missing
+    return userObj.id || userObj._id;
   };
 
-  // Fallback: Check local user.kycStatus if available (from login response)
   const getLocalKycStatus = (userObj) => {
-    return userObj?.kycStatus === 'verified';
+    return userObj?.kycStatus === "verified";
   };
 
-  const fetchKycStatus = async () => {
+  const fetchKycStatus = useCallback(async () => {
+    // --- THE FIX IS HERE: We now check for the token as well ---
     const userId = getUserId(user);
-    // Stronger guard: Skip if not authenticated or no user ID
-    if (!isAuthenticated || !userId) {
-      console.log('Skipping KYC fetch: Not authenticated or missing user ID', { 
-        isAuthenticated, 
-        userId,
-        hasLocalKyc: !!user?.kycStatus 
-      });
-      
-      // Fallback: Use local kycStatus if stored in user object
+    if (!isAuthenticated || !userId || !token) {
+      console.log(
+        "Skipping KYC fetch: Not authenticated, missing user ID, or no token."
+      );
+
       if (getLocalKycStatus(user)) {
-        console.log('Using local kycStatus: verified');
         setIsVerified(true);
       } else {
         setIsVerified(false);
-        setError('User not fully loaded. Please refresh or log in again.');
       }
       setLoading(false);
       return;
@@ -46,44 +45,34 @@ export const BuyerProvider = ({ children }) => {
     setLoading(true);
     setError(null);
     try {
-      console.log('Fetching KYC status for user:', userId);
-      const response = await fetch('http://localhost:5000/api/kyc/status', {
-        method: 'GET',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
+      console.log("Fetching KYC status for user:", userId);
+      // --- THE FIX IS HERE: Add the Authorization header ---
+      const response = await fetch("http://localhost:5000/api/kyc/status", {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`, // This proves to the backend who is making the request
+        },
       });
 
-      console.log('KYC Response status:', response.status);
+      console.log("KYC Response status:", response.status);
 
       if (!response.ok) {
-        const errorText = await response.text();
-        console.error('Full KYC error:', errorText);
-        if (response.status === 401) {
-          setError('Authentication issue. Please log in again.');
-        } else if (response.status === 404) {
-          setError('KYC check unavailable—using local status.');
-        } else {
-          setError(`Server error: ${errorText}`);
-        }
-        
-        // Fallback on error: Use local kycStatus if available
-        if (getLocalKycStatus(user)) {
-          console.log('Fallback to local verified status');
-          setIsVerified(true);
-        } else {
-          setIsVerified(false);
-        }
-        return;
+        const errorText = await response.json();
+        console.error("Full KYC error:", errorText.message);
+        throw new Error(errorText.message || `Status: ${response.status}`);
       }
 
       const data = await response.json();
-      console.log('Fetched KYC data:', data);
-      setIsVerified(data.kycStatus === 'verified');
+      console.log("Fetched KYC data:", data);
+      setIsVerified(data.kycStatus === "verified");
     } catch (err) {
-      console.error('Network error fetching KYC status:', err);
-      setError('Network error. Check connection.');
-      
-      // Fallback on network error
+      console.error("Network error fetching KYC status:", err);
+      setError(
+        "Could not fetch verification status. Using local data as fallback."
+      );
+
+      // Fallback on any error
       if (getLocalKycStatus(user)) {
         setIsVerified(true);
       } else {
@@ -92,16 +81,18 @@ export const BuyerProvider = ({ children }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [isAuthenticated, user, token]); // Add token to dependency array
 
   useEffect(() => {
     fetchKycStatus();
-  }, [isAuthenticated, user]); // Depend on user changes
+  }, [fetchKycStatus]); // useEffect now depends on the useCallback function
 
   const refreshKycStatus = () => fetchKycStatus();
 
   return (
-    <BuyerContext.Provider value={{ isVerified, loading, error, refreshKycStatus }}>
+    <BuyerContext.Provider
+      value={{ isVerified, loading, error, refreshKycStatus }}
+    >
       {children}
     </BuyerContext.Provider>
   );
@@ -110,7 +101,7 @@ export const BuyerProvider = ({ children }) => {
 export const useBuyer = () => {
   const context = useContext(BuyerContext);
   if (!context) {
-    throw new Error('useBuyer must be used within BuyerProvider');
+    throw new Error("useBuyer must be used within BuyerProvider");
   }
   return context;
 };
