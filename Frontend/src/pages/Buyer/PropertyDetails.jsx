@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { MapPin, DollarSign, Ruler, FileText, CheckCircle, Upload, LinkIcon, ArrowLeft, Hash, ClipboardList } from 'lucide-react';
+import { MapPin, DollarSign, Ruler, FileText, CheckCircle, LinkIcon, ArrowLeft, Hash, ClipboardList, User, Mail, Phone } from 'lucide-react';
 
 const PropertyDetailsPage = () => {
     const { id } = useParams();
@@ -39,6 +39,14 @@ const PropertyDetailsPage = () => {
     
     const getDocumentsArray = (hashes) => {
         if (!hashes) return [];
+        // Handle both array and object formats
+        if (Array.isArray(hashes)) {
+            return hashes.map((hash, index) => ({
+                name: `Document ${index + 1}`,
+                ipfsHash: hash,
+                status: 'verified'
+            }));
+        }
         return Object.entries(hashes).map(([key, value]) => ({
             name: key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase()),
             ipfsHash: value,
@@ -71,7 +79,6 @@ const PropertyDetailsPage = () => {
             </Link>
 
             <div className="relative">
-                {/* Image source updated to the static image in the public folder */}
                 <img 
                     src="/land-image-01.jpg" 
                     alt={property.propertyAddress} 
@@ -98,7 +105,7 @@ const PropertyDetailsPage = () => {
                                 <Ruler className="w-5 h-5 mr-2" /> {property.area || 'N/A'} {property.areaUnit || 'sq m'}
                             </span>
                         </div>
-                        <p className="text-gray-700 leading-relaxed">{property.description}</p>
+                        <p className="text-gray-700 leading-relaxed">{property.description || 'No description available.'}</p>
                     </div>
 
                     <div className="p-6 bg-white rounded-lg border border-gray-200">
@@ -107,12 +114,22 @@ const PropertyDetailsPage = () => {
                             <li className="flex items-center">
                                 <Hash className="w-5 h-5 mr-3 text-gray-500" />
                                 <span className="font-semibold mr-2">Property ID:</span>
-                                <span>{property.propertyPID || 'N/A'}</span>
+                                <span>{property.propertyId || 'N/A'}</span>
+                            </li>
+                            <li className="flex items-center">
+                                <Hash className="w-5 h-5 mr-3 text-gray-500" />
+                                <span className="font-semibold mr-2">Token ID:</span>
+                                <span>{property.tokenId || 'N/A'}</span>
                             </li>
                             <li className="flex items-center">
                                 <ClipboardList className="w-5 h-5 mr-3 text-gray-500" />
                                 <span className="font-semibold mr-2">Survey No:</span>
                                 <span>{property.surveyNumber || 'N/A'}</span>
+                            </li>
+                            <li className="flex items-center">
+                                <MapPin className="w-5 h-5 mr-3 text-gray-500" />
+                                <span className="font-semibold mr-2">District:</span>
+                                <span>{property.district || 'N/A'}</span>
                             </li>
                             <li className="flex items-center">
                                 <MapPin className="w-5 h-5 mr-3 text-gray-500" />
@@ -123,30 +140,107 @@ const PropertyDetailsPage = () => {
                     </div>
 
                     <div className="p-6 bg-white rounded-lg border border-gray-200">
-                        <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center">
-                            <FileText className="w-6 h-6 mr-2 text-blue-600" />
-                            Verifiable Documents
-                        </h2>
-                        <ul className="space-y-4">
-                           {documents.map((doc, index) => (
-                                <li key={index} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                                    <span className="font-semibold text-gray-700 flex items-center">
-                                        <CheckCircle className="w-5 h-5 text-green-500 mr-2" /> {doc.name}
-                                    </span>
-                                    <a href={`https://ipfs.io/ipfs/${doc.ipfsHash}`} target="_blank" rel="noopener noreferrer" className="flex items-center text-blue-600 hover:underline">
-                                        View on IPFS <LinkIcon className="w-4 h-4 ml-1" />
-                                    </a>
-                                </li>
-                            ))}
-                        </ul>
-                    </div>
+    <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center">
+        <FileText className="w-6 h-6 mr-2 text-blue-600" />
+        Verifiable Documents
+    </h2>
+
+    {documents.length > 0 ? (
+        <ul className="space-y-4">
+            {/* Hardcoded first document */}
+            {documents[0] && (
+                <li className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                    <span className="font-semibold text-gray-700 flex items-center">
+                        <CheckCircle className="w-5 h-5 mr-2 text-purple-500" /> Mother Deed
+                    </span>
+                    <a
+                        href={`https://ipfs.io/ipfs/${documents[0].ipfsHash}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center text-blue-600 hover:underline"
+                    >
+                        View on IPFS <LinkIcon className="w-4 h-4 ml-1" />
+                    </a>
+                </li>
+            )}
+
+            {/* Hardcoded second document */}
+            {documents[1] && (
+                <li className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                    <span className="font-semibold text-gray-700 flex items-center">
+                        <CheckCircle className="w-5 h-5 mr-2 text-orange-500" /> Encumbrance Certificate
+                    </span>
+                    <a
+                        href={`https://ipfs.io/ipfs/${documents[1].ipfsHash}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center text-blue-600 hover:underline"
+                    >
+                        View on IPFS <LinkIcon className="w-4 h-4 ml-1" />
+                    </a>
+                </li>
+            )}
+        </ul>
+    ) : (
+        <p className="text-gray-500">No documents available</p>
+    )}
+</div>
+
                 </div>
 
                 <div className="bg-gray-50 rounded-lg p-6 space-y-6">
+                    <div className="bg-white rounded-lg border border-gray-200 p-6">
+                        <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center">
+                            <User className="w-6 h-6 mr-2 text-blue-600" />
+                            Owner Information
+                        </h2>
+                        <div className="space-y-3 text-gray-700">
+                            <div className="flex items-center">
+                                <User className="w-5 h-5 mr-3 text-gray-500" />
+                                <span className="font-semibold mr-2">Name:</span>
+                                <span>{property.owner?.name || property.ownerName || 'N/A'}</span>
+                            </div>
+                            {property.owner?.email && (
+                                <div className="flex items-center">
+                                    <Mail className="w-5 h-5 mr-3 text-gray-500" />
+                                    <span className="font-semibold mr-2">Email:</span>
+                                    <span>{property.owner.email}</span>
+                                </div>
+                            )}
+                            {property.owner?.phone && (
+                                <div className="flex items-center">
+                                    <Phone className="w-5 h-5 mr-3 text-gray-500" />
+                                    <span className="font-semibold mr-2">Phone:</span>
+                                    <span>{property.owner.phone}</span>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    
+                    <div className="mt-6 p-4 bg-white rounded-lg border">
+                        <h3 className="text-lg font-semibold mb-3">Quick Info</h3>
+                        <div className="space-y-2 text-sm text-gray-600">
+                            <div className="flex justify-between">
+                                <span>Listed:</span>
+                                <span>{new Date(property.createdAt).toLocaleDateString()}</span>
+                            </div>
+                            <div className="flex justify-between">
+                                <span>Updated:</span>
+                                <span>{new Date(property.updatedAt).toLocaleDateString()}</span>
+                            </div>
+                        </div>
+                    </div>
                     <h2 className="text-2xl font-bold text-gray-900 mb-4">Actions</h2>
-                    <button className="w-full py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-semibold">
-                        Initiate Purchase
-                    </button>
+                    {property.status === 'listed_for_sale' ? (
+                        <button className="w-full py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-semibold transition-colors">
+                            Initiate Purchase
+                        </button>
+                    ) : (
+                        <div className="w-full py-3 bg-gray-400 text-white rounded-lg font-semibold text-center">
+                            Not Available for Purchase
+                        </div>
+                    )}
                 </div>
             </div>
         </div>

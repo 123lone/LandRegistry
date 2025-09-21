@@ -1,45 +1,72 @@
+// src/components/PropertyCard.js
+
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { MapPin, DollarSign, Ruler } from 'lucide-react';
+import { MapPin, DollarSign, Ruler, CircleUser } from 'lucide-react';
 
 const PropertyCard = ({ property }) => {
-    // A guard clause to prevent crashes if a property is undefined
+    // A guard clause to prevent crashes if a property is null or undefined
     if (!property) {
         return null;
     }
 
-    const formatAddress = (prop) => {
-        if (prop.address && prop.address.city) {
-            return `${prop.address.city}, ${prop.address.state}`;
-        }
-        return prop.propertyAddress;
-    };
-
+    // Use optional chaining (?.) for safely accessing nested properties
+    const ownerName = property?.owner?.name || 'N/A';
+    const ownerEmail = property?.owner?.email || 'N/A';
+    
+    // Combine address details for a cleaner display
+    const displayAddress = `${property.propertyAddress}${property.district ? `, ${property.district}` : ''}`;
+    
     return (
-        <div className="bg-white rounded-xl shadow-lg overflow-hidden flex flex-col">
-            <div className="p-4 flex flex-col flex-grow">
-                <h3 className="text-xl font-bold text-gray-900 truncate mb-1">{property.propertyAddress}</h3>
-                <p className="flex items-center text-sm text-gray-500 mb-3">
-                    <MapPin className="w-4 h-4 mr-1 text-blue-500" />
-                    {formatAddress(property)}
-                </p>
-                <div className="flex items-center justify-between mb-4">
-                    <p className="flex items-center text-lg font-bold text-green-600">
-                        <DollarSign className="w-5 h-5 mr-1" />
+        <div className="bg-white rounded-xl shadow-lg overflow-hidden flex flex-col transition-all duration-300 hover:shadow-2xl hover:-translate-y-1">
+            
+            {/* You can add a placeholder for a property image here */}
+            <div className="bg-gray-200 h-48 w-full flex items-center justify-center text-gray-400">
+                 {/* Example: <img src={property.imageUrl} alt="Property" className="w-full h-full object-cover" /> */}
+                 <span>Property Image</span>
+            </div>
+
+            <div className="p-6 flex flex-col flex-grow">
+                {/* Property Address */}
+                <h3 className="text-2xl font-bold text-gray-900 truncate mb-2" title={displayAddress}>
+                    {displayAddress}
+                </h3>
+
+                {/* Price and Area */}
+                <div className="flex items-center justify-between mb-4 text-gray-700">
+                    <p className="flex items-center text-xl font-semibold text-green-600">
+                        <DollarSign className="w-5 h-5 mr-1.5" />
                         {property.price} ETH
                     </p>
-                    <p className="flex items-center text-sm text-gray-600">
-                        <Ruler className="w-4 h-4 mr-1" />
+                    <p className="flex items-center text-md">
+                        <Ruler className="w-5 h-5 mr-1.5" />
                         {property.area} {property.areaUnit ? property.areaUnit.replace('_', ' ') : 'sq m'}
                     </p>
                 </div>
-                <div className="flex-grow"></div>
-                <Link
-                    to={`/buyer-dashboard/property/${property._id}`}
-                    className="w-full mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors block text-center"
-                >
-                    View Details
-                </Link>
+                
+                <hr className="my-4" />
+
+                {/* Owner Information */}
+                <div className="mb-5">
+                    <h4 className="text-sm font-semibold text-gray-500 mb-2">LISTED BY</h4>
+                    <div className="flex items-center space-x-3">
+                        <CircleUser className="w-10 h-10 text-gray-400" />
+                        <div>
+                            <p className="font-bold text-gray-800">{ownerName}</p>
+                            <p className="text-sm text-gray-500">{ownerEmail}</p>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Action Button - Pushes to the bottom */}
+                <div className="mt-auto">
+                    <Link
+                        to={`/buyer-dashboard/property/${property._id}`}
+                        className="w-full mt-4 px-4 py-3 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 transition-colors block text-center"
+                    >
+                        View Details
+                    </Link>
+                </div>
             </div>
         </div>
     );

@@ -3,109 +3,107 @@ pragma solidity ^0.8.20;
 
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
 
-/**
- * @title PropertyTitle
- * @dev An ERC721 token contract for representing unique property titles.
- * A trusted verifier can mint a new title deed (NFT) for a property owner.
- */
-contract PropertyTitle is ERC721, Ownable {
+contract PropertyTitle is ERC721, Ownable, AccessControl {
     using Counters for Counters.Counter;
     Counters.Counter private _tokenIds;
+
+    bytes32 public constant VERIFIER_ROLE = keccak256("VERIFIER_ROLE");
 
     struct PropertyDetails {
         string surveyNumber;
         string propertyId;      // Unique identifier for the property (off-chain)
         string propertyAddress;
+        string district;        // The district where the property is located
         uint256 area;           // Area in square units (e.g., sq ft)
         string ownerName;
-        string description;
         string[] documentHashes; // Array of IPFS hashes for related documents
-        bool verified;          // Status indicating if the property details have been officially verified
+        bool verified;           // Status indicating if the property details have been officially verified
     }
 
-    // Mapping from a token ID to its detailed property information.
     mapping(uint256 => PropertyDetails) public propertyDetails;
 
-    // Events to log key actions on the blockchain
     event TitleMinted(uint256 indexed tokenId, address indexed owner, string propertyId, string[] documentHashes);
     event TitleVerified(uint256 indexed tokenId, bool verified);
+    event VerifierAdded(address indexed account);
+    event VerifierRemoved(address indexed account);
 
-    constructor() ERC721("Land Registry Title", "LRT") {}
+    // Constructor: ERC721 name & symbol, Ownable automatically sets msg.sender as owner
+    constructor() ERC721("Land Registry Title", "LRT") {
+        _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
+        _grantRole(VERIFIER_ROLE, msg.sender);
+    }
 
-
-    /**
-     * @dev Mints a new property title NFT and assigns it to an owner.
-     * Can be called by any address (e.g., a verified registrar) to create a title for a citizen.
-     * @param to The wallet address of the new property owner.
-     * @param surveyNumber The official survey number of the land.
-     * @param propertyId A unique off-chain identifier for the property.
-     * @param propertyAddress The physical address of the property.
-     * @param area The total area of the property.
-     * @param ownerName The legal name of the property owner.
-     * @param description Optional description of the property.
-     * @param documentHashes An array of IPFS CIDs for the property documents.
-     * @return The ID of the newly minted token.
-     */
+    // Mint a new property title token
     function mintTitle(
         address to,
         string memory surveyNumber,
         string memory propertyId,
         string memory propertyAddress,
+        string memory district,
         uint256 area,
         string memory ownerName,
-        string memory description,
         string[] memory documentHashes
-    ) external returns (uint256) {
+    ) external onlyRole(VERIFIER_ROLE) returns (uint256) {
         _tokenIds.increment();
         uint256 newId = _tokenIds.current();
         _safeMint(to, newId);
-        
+
         propertyDetails[newId] = PropertyDetails({
             surveyNumber: surveyNumber,
             propertyId: propertyId,
             propertyAddress: propertyAddress,
+            district: district,
             area: area,
             ownerName: ownerName,
-            description: description,
             documentHashes: documentHashes,
-            verified: false // A separate verification step is required after minting
+            verified: false
         });
 
         emit TitleMinted(newId, to, propertyId, documentHashes);
         return newId;
     }
 
-    /**
-     * @dev Sets the verification status of a property.
-     * Typically called by an authorized party (e.g., contract owner) after due diligence.
-     * @param tokenId The ID of the token to verify.
-     * @param status The verification status (true or false).
-     */
-    function setVerified(uint256 tokenId, bool status) external onlyOwner {
+    // Admin can verify property details
+    function setVerifiedByAdmin(uint256 tokenId, bool status) external onlyOwner {
         require(_exists(tokenId), "Token does not exist");
         propertyDetails[tokenId].verified = status;
         emit TitleVerified(tokenId, status);
     }
 
-    /**
-     * @dev Checks if a property title is verified.
-     * @param tokenId The ID of the token to check.
-     * @return A boolean indicating the verification status.
-     */
+    // Add a verifier role
+    function addVerifier(address account) external onlyOwner {
+        grantRole(VERIFIER_ROLE, account);
+        emit VerifierAdded(account);
+    }
+
+    // Remove a verifier role
+    function removeVerifier(address account) external onlyOwner {
+        revokeRole(VERIFIER_ROLE, account);
+        emit VerifierRemoved(account);
+    }
+
+    // Check if a property is verified
     function isVerified(uint256 tokenId) external view returns (bool) {
         require(_exists(tokenId), "Token does not exist");
         return propertyDetails[tokenId].verified;
     }
 
-    /**
-     * @dev Retrieves all details for a specific property title.
-     * @param tokenId The ID of the token to query.
-     * @return A memory struct containing all property details.
-     */
+    // Get full property details
     function getPropertyDetails(uint256 tokenId) external view returns (PropertyDetails memory) {
         require(_exists(tokenId), "Token does not exist");
         return propertyDetails[tokenId];
+    }
+
+    // Resolve multiple inheritance for supportsInterface
+    function supportsInterface(bytes4 interfaceId) 
+        public 
+        view 
+        override(ERC721, AccessControl) 
+        returns (bool) 
+    {
+        return super.supportsInterface(interfaceId);
     }
 }

@@ -1,64 +1,162 @@
-import React from 'react';
+// src/pages/buyer/PropertyDetailsPage.js
 
-const PropertyDetailsForm = ({ formData, handleInputChange, handleFileChange }) => {
-  const inputClasses = "mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm";
-  const labelClasses = "block text-sm font-medium text-gray-700";
-  const fileInputClasses = "mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100";
+import React, { useState, useEffect } from 'react';
+import { useParams, Link } from 'react-router-dom';
+import { ArrowLeft, MapPin, Hash, ScanLine, Ruler, User, Mail, Phone, ExternalLink, ShieldCheck } from 'lucide-react';
 
-  return (
-    <>
-      {/* Basic Information */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div>
-          <label htmlFor="propertyAddress" className={labelClasses}>Property Address *</label>
-          <input type="text" id="propertyAddress" name="propertyAddress" value={formData.propertyAddress} onChange={handleInputChange} className={inputClasses} placeholder="Enter full property address" required />
-        </div>
-        <div>
-          <label htmlFor="price" className={labelClasses}>Price (in ETH) *</label>
-          <input type="number" id="price" name="price" value={formData.price} onChange={handleInputChange} className={inputClasses} step="0.001" min="0" placeholder="0.5" required />
-        </div>
-        <div>
-          <label htmlFor="propertyPID" className={labelClasses}>Property PID *</label>
-          <input type="text" id="propertyPID" name="propertyPID" value={formData.propertyPID} onChange={handleInputChange} className={inputClasses} placeholder="Enter Property ID" required />
-        </div>
-        <div>
-          <label htmlFor="surveyNumber" className={labelClasses}>Survey Number *</label>
-          <input type="text" id="surveyNumber" name="surveyNumber" value={formData.surveyNumber} onChange={handleInputChange} className={inputClasses} placeholder="Enter survey number" required />
-        </div>
-        <div>
-          <label htmlFor="area" className={labelClasses}>Area (in sq meters)</label>
-          <input type="text" id="area" name="area" value={formData.area} className={inputClasses} placeholder="Auto-calculated from drawings" readOnly />
-        </div>
-      </div>
-      <div>
-        <label htmlFor="description" className={labelClasses}>Description</label>
-        <textarea id="description" name="description" value={formData.description} onChange={handleInputChange} rows="3" className={inputClasses} placeholder="Describe the property features..." />
-      </div>
+const PropertyDetailsPage = () => {
+    const { id } = useParams(); // Get property ID from the URL
+    const [property, setProperty] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
 
-      {/* Document Upload Section */}
-      <div className="space-y-4 pt-4 border-t border-gray-200">
-        <h3 className="text-lg font-semibold text-gray-700">📄 Required Documents</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div>
-            <label htmlFor="deedDocument" className={labelClasses}>Deed Document</label>
-            <input type="file" id="deedDocument" name="deedDocument" onChange={handleFileChange} className={fileInputClasses} accept=".pdf,.jpg,.jpeg,.png" />
-          </div>
-          <div>
-            <label htmlFor="taxDocument" className={labelClasses}>Tax Documents</label>
-            <input type="file" id="taxDocument" name="taxDocument" onChange={handleFileChange} className={fileInputClasses} accept=".pdf,.jpg,.jpeg,.png" />
-          </div>
-          <div>
-            <label htmlFor="motherDeed" className={labelClasses}>Mother Deed</label>
-            <input type="file" id="motherDeed" name="motherDeed" onChange={handleFileChange} className={fileInputClasses} accept=".pdf,.jpg,.jpeg,.png" />
-          </div>
-          <div>
-            <label htmlFor="encumbrance" className={labelClasses}>Encumbrance Certificate</label>
-            <input type="file" id="encumbrance" name="encumbrance" onChange={handleFileChange} className={fileInputClasses} accept=".pdf,.jpg,.jpeg,.png" />
-          </div>
+    useEffect(() => {
+        const fetchPropertyDetails = async () => {
+            try {
+                const response = await fetch(`http://localhost:5000/api/properties/${id}`, {
+                    credentials: 'include',
+                });
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: Failed to fetch property details`);
+                }
+                const data = await response.json();
+                setProperty(data);
+            } catch (err) {
+                setError(err.message);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchPropertyDetails();
+    }, [id]);
+
+    if (loading) {
+        return <div className="text-center py-20">Loading property details...</div>;
+    }
+
+    if (error) {
+        return <div className="text-center py-20 text-red-600">Error: {error}</div>;
+    }
+
+    if (!property) {
+        return <div className="text-center py-20">Property not found.</div>;
+    }
+
+    // Safely access owner details with optional chaining
+    const ownerName = property.owner?.name || 'N/A';
+    const ownerEmail = property.owner?.email || 'N/A';
+    const ownerPhone = property.owner?.phone || 'Not Provided';
+
+    return (
+        <div className="max-w-7xl mx-auto p-4 md:p-8 space-y-8">
+            {/* Back Link */}
+            <div>
+                <Link to="/buyer-dashboard/marketplace" className="flex items-center text-blue-600 hover:underline">
+                    <ArrowLeft size={20} className="mr-2" /> Back to Marketplace
+                </Link>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                {/* Left Column: Property Info */}
+                <div className="lg:col-span-2 bg-white p-6 rounded-lg shadow-md space-y-6">
+                    {/* Image Placeholder */}
+                    <div className="bg-gray-200 h-80 w-full rounded-lg flex items-center justify-center text-gray-500">
+                                            </div>
+                    
+                    {/* Header */}
+                    <div className="flex justify-between items-start">
+                        <div>
+                            <h1 className="text-3xl font-bold text-gray-900">{property.propertyAddress}</h1>
+                            <p className="flex items-center text-gray-500 mt-1">
+                                <MapPin size={16} className="mr-2" />
+                                {property.district || 'N/A'}
+                            </p>
+                        </div>
+                        <span className="bg-green-100 text-green-800 text-sm font-medium px-4 py-1.5 rounded-full">
+                            For Sale
+                        </span>
+                    </div>
+                    
+                    <hr />
+
+                    {/* Property Details Grid */}
+                    <h2 className="text-xl font-semibold text-gray-800">Property Details</h2>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
+                        <DetailItem icon={<Hash size={20} />} label="Property ID" value={property.propertyId} />
+                        <DetailItem icon={<ScanLine size={20} />} label="Survey No." value={property.surveyNumber} />
+                        <DetailItem icon={<Ruler size={20} />} label="Area" value={`${property.area} ${property.areaUnit || 'sq m'}`} />
+                        <DetailItem icon={<MapPin size={20} />} label="Full Address" value={property.propertyAddress} />
+                    </div>
+
+                    <hr />
+
+                    {/* Verifiable Documents */}
+                    <h2 className="text-xl font-semibold text-gray-800">Verifiable Documents</h2>
+                    <div className="space-y-3">
+                        {property.documentHashes && property.documentHashes.length > 0 ? (
+                            property.documentHashes.map((hash, index) => (
+                                <a
+                                    key={index}
+                                    href={`https://ipfs.io/ipfs/${hash}`} // Example IPFS gateway link
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="flex items-center justify-between p-3 bg-gray-50 rounded-md hover:bg-gray-100 transition"
+                                >
+                                    <span className="font-medium text-blue-700">Document #{index + 1}</span>
+                                    <ExternalLink size={18} className="text-gray-500" />
+                                </a>
+                            ))
+                        ) : (
+                            <p className="text-gray-500">No documents uploaded.</p>
+                        )}
+                    </div>
+                </div>
+
+                {/* Right Column: Actions & Seller Info */}
+                <div className="lg:col-span-1 space-y-6">
+                    {/* Purchase Card */}
+                    <div className="bg-white p-6 rounded-lg shadow-md">
+                        <p className="text-gray-600">Price</p>
+                        <p className="text-3xl font-bold text-green-600 my-2">{property.price} ETH</p>
+                        <button className="w-full mt-4 px-6 py-3 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 transition">
+                            Initiate Purchase
+                        </button>
+                    </div>
+
+                    {/* Seller Information Card */}
+                    <div className="bg-white p-6 rounded-lg shadow-md">
+                        <h2 className="text-xl font-semibold text-gray-800 mb-4">Seller Information</h2>
+                        <div className="space-y-4">
+                            <InfoRow icon={<User size={18} />} label="Name" value={ownerName} />
+                            <InfoRow icon={<Mail size={18} />} label="Email" value={ownerEmail} />
+                            <InfoRow icon={<Phone size={18} />} label="Phone" value={ownerPhone} />
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
-      </div>
-    </>
-  );
+    );
 };
 
-export default PropertyDetailsForm;
+// Helper component for consistent styling
+const DetailItem = ({ icon, label, value }) => (
+    <div className="flex items-start">
+        <span className="text-gray-500 mt-1 mr-3">{icon}</span>
+        <div>
+            <p className="text-sm text-gray-600">{label}</p>
+            <p className="font-semibold text-gray-800">{value || 'N/A'}</p>
+        </div>
+    </div>
+);
+
+const InfoRow = ({ icon, label, value }) => (
+    <div className="flex items-center">
+        <span className="text-gray-500 mr-3">{icon}</span>
+        <div>
+            <p className="font-semibold text-gray-800">{value}</p>
+        </div>
+    </div>
+);
+
+export default PropertyDetailsPage;

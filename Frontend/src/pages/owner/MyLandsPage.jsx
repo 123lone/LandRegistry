@@ -1,11 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
+import { ethers } from 'ethers';
 
 const MyLandsPage = () => {
     const { isAuthenticated } = useAuth();
     const [myLands, setMyLands] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+
+    // Track price inputs per landId
+    const [priceInputs, setPriceInputs] = useState({});
 
     // Fetch all lands owned by the user when the component loads
     useEffect(() => {
@@ -16,8 +20,8 @@ const MyLandsPage = () => {
 
         const fetchMyLands = async () => {
             try {
-                const response = await fetch('http://localhost:5000/api/properties/my', {
-                    credentials: 'include', // Automatically sends the auth cookie
+                const response = await fetch('http://localhost:5000/api/properties/my-properties', {
+                    credentials: 'include',
                 });
 
                 if (!response.ok) {
@@ -38,36 +42,64 @@ const MyLandsPage = () => {
     }, [isAuthenticated]);
 
     // Handler for the "List for Sale" button
-    // In MyLandsPage.jsx
-
-const handleListForSale = async (landId) => {
-    try {
-        // Change the URL in this fetch call
-        const response = await fetch(`http://localhost:5000/api/properties/list/${landId}`, {
-            method: 'PUT',
-            credentials: 'include',
-        });
-
-        if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.message || 'Failed to update status');
+    const handleListForSale = async (landId, price) => {
+        if (!price) {
+            setError("Price is required.");
+            return;
         }
-        
-        const updatedLand = await response.json();
 
-        // Update the state for an instant UI change
-        setMyLands(prevLands => 
-            prevLands.map(land => 
-                land._id === landId ? updatedLand : land
-            )
-        );
-        setError(null);
+        try {
+            // Step 1: Prepare approval transaction
+            const prepareResponse = await fetch(`http://localhost:5000/api/properties/${landId}/prepare-listing`, {
+                method: 'POST',  // ✅ backend expects POST
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({ price }),
+            });
 
-    } catch (err) {
-        setError(err.message);
-    }
-};
-    
+            if (!prepareResponse.ok) {
+                const errorData = await prepareResponse.json();
+                throw new Error(errorData.message || 'Failed to prepare listing');
+            }
+
+            const { transactionData } = await prepareResponse.json();
+
+            // Step 2: Ask wallet to sign & send the transaction
+            const provider = new ethers.BrowserProvider(window.ethereum);
+            const signer = await provider.getSigner();
+            const tx = await signer.sendTransaction(transactionData);
+
+            // Step 3: Wait for confirmation
+            const receipt = await tx.wait();
+
+            // Step 4: Finalize listing in backend
+            const finalizeResponse = await fetch(`http://localhost:5000/api/properties/${landId}/finalize-listing`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({ transactionHash: receipt.hash, price }),
+            });
+
+            if (!finalizeResponse.ok) {
+                const errorData = await finalizeResponse.json();
+                throw new Error(errorData.message || 'Failed to finalize listing');
+            }
+
+            const result = await finalizeResponse.json();
+
+            // Update UI instantly
+            setMyLands(prevLands =>
+                prevLands.map(land =>
+                    land._id === landId ? result.data : land
+                )
+            );
+            setError(null);
+
+        } catch (err) {
+            setError(err.message);
+        }
+    };
+
     // Helper to format the address
     const formatAddress = (land) => {
         if (land.address && land.address.street) {
@@ -110,11 +142,28 @@ const handleListForSale = async (landId) => {
                     <tbody className="bg-white divide-y divide-gray-200">
                         {myLands.map((land) => (
                             <tr key={land._id}>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{land.propertyPID}</td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{land.propertyId}</td>
                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{land.surveyNumber}</td>
                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{formatAddress(land)}</td>
                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{land.area} {land.areaUnit || 'sq m'}</td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{land.price} ETH</td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                    {land.status === 'verified' ? (
+                                        <input
+                                            type="number"
+                                            className="border rounded px-2 py-1 w-24"
+                                            placeholder="Price"
+                                            value={priceInputs[land._id] || ""}
+                                            onChange={e =>
+                                                setPriceInputs(prev => ({
+                                                    ...prev,
+                                                    [land._id]: e.target.value
+                                                }))
+                                            }
+                                        />
+                                    ) : (
+                                        `${land.price || '-'} ETH`
+                                    )}
+                                </td>
                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                     <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
                                         land.status === 'listed_for_sale' ? 'bg-green-100 text-green-800' :
@@ -129,7 +178,7 @@ const handleListForSale = async (landId) => {
                                     
                                     {land.status === 'verified' && (
                                         <button 
-                                            onClick={() => handleListForSale(land._id)}
+                                            onClick={() => handleListForSale(land._id, priceInputs[land._id])}
                                             className="ml-4 text-green-600 hover:text-green-900"
                                         >
                                             List for Sale
