@@ -1,8 +1,18 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-
+import { useAuth } from "../context/AuthContext";
 export default function LdrLayout({ children, activeTab }) {
   const navigate = useNavigate();
+    const { logout, user, updateUser } = useAuth();; // c
+
+  const handleLogout = async () => {
+    try {
+      await logout(); // call your existing logout function (assume it’s globally available)
+      navigate("/login", { replace: true });
+    } catch (error) {
+      console.error("Logout failed:", error);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -16,8 +26,14 @@ export default function LdrLayout({ children, activeTab }) {
                 Admin Portal
               </span>
             </div>
-            <div className="text-sm text-gray-600">
-              Logged in as: LDR Officer
+            <div className="flex items-center space-x-4 text-sm text-gray-600">
+              <span>Logged in as: LDR Officer</span>
+              <button
+                onClick={handleLogout}
+                className="px-3 py-1 bg-red-100 text-red-800 text-sm font-medium rounded hover:bg-red-200 transition"
+              >
+                Logout
+              </button>
             </div>
           </div>
         </div>

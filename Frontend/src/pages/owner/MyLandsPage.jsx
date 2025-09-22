@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { ethers } from 'ethers';
-
+import PropertyTitleABI from '../../abis/PropertyTitle.json';
+import MarketplaceABI from '../../abis/Marketplace.json';
 const MyLandsPage = () => {
     const { isAuthenticated } = useAuth();
     const [myLands, setMyLands] = useState([]);
@@ -11,7 +12,6 @@ const MyLandsPage = () => {
     // Track price inputs per landId
     const [priceInputs, setPriceInputs] = useState({});
 
-    // Fetch all lands owned by the user when the component loads
     useEffect(() => {
         if (!isAuthenticated) {
             setLoading(false);
@@ -41,64 +41,103 @@ const MyLandsPage = () => {
         fetchMyLands();
     }, [isAuthenticated]);
 
-    // Handler for the "List for Sale" button
+    // Handler for "List for Sale"
     const handleListForSale = async (landId, price) => {
-        if (!price) {
-            setError("Price is required.");
-            return;
-        }
+  if (!price) {
+    setError("Price is required.");
+    return;
+  }
 
-        try {
-            // Step 1: Prepare approval transaction
-            const prepareResponse = await fetch(`http://localhost:5000/api/properties/${landId}/prepare-listing`, {
-                method: 'POST',  // ✅ backend expects POST
-                headers: { 'Content-Type': 'application/json' },
-                credentials: 'include',
-                body: JSON.stringify({ price }),
-            });
+  try {
+    const land = myLands.find(l => l._id === landId);
+    if (!land) throw new Error("Land not found");
 
-            if (!prepareResponse.ok) {
-                const errorData = await prepareResponse.json();
-                throw new Error(errorData.message || 'Failed to prepare listing');
-            }
+    const provider = new ethers.BrowserProvider(window.ethereum);
+    const signer = await provider.getSigner();
 
-            const { transactionData } = await prepareResponse.json();
+    console.log("Step 1: Approving marketplace...");
 
-            // Step 2: Ask wallet to sign & send the transaction
-            const provider = new ethers.BrowserProvider(window.ethereum);
-            const signer = await provider.getSigner();
-            const tx = await signer.sendTransaction(transactionData);
+    // Step 1: Approve Marketplace to manage this NFT
+    const nftContract = new ethers.Contract(
+      import.meta.env.VITE_PROPERTY_TITLE_ADDRESS,
+      PropertyTitleABI.abi,
+      signer
+    );
 
-            // Step 3: Wait for confirmation
-            const receipt = await tx.wait();
+    const approveTx = await nftContract.approve(
+      import.meta.env.VITE_MARKETPLACE_ADDRESS,
+      land.tokenId
+    );
+    console.log("Approve tx sent:", approveTx);
 
-            // Step 4: Finalize listing in backend
-            const finalizeResponse = await fetch(`http://localhost:5000/api/properties/${landId}/finalize-listing`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                credentials: 'include',
-                body: JSON.stringify({ transactionHash: receipt.hash, price }),
-            });
+    const approveReceipt = await approveTx.wait();
+    console.log("Approve tx receipt:", approveReceipt);
+    console.log("Approve transaction hash:", approveTx.hash);
 
-            if (!finalizeResponse.ok) {
-                const errorData = await finalizeResponse.json();
-                throw new Error(errorData.message || 'Failed to finalize listing');
-            }
+    console.log("Step 2: Listing property...");
 
-            const result = await finalizeResponse.json();
+    // Step 2: List property on Marketplace
+    const marketplaceContract = new ethers.Contract(
+      import.meta.env.VITE_MARKETPLACE_ADDRESS,
+      MarketplaceABI.abi,
+      signer
+    );
 
-            // Update UI instantly
-            setMyLands(prevLands =>
-                prevLands.map(land =>
-                    land._id === landId ? result.data : land
-                )
-            );
-            setError(null);
+    const priceInWei = ethers.parseEther(price.toString());
+    console.log("Price in Wei:", priceInWei.toString());
 
-        } catch (err) {
-            setError(err.message);
-        }
+    const listTx = await marketplaceContract.listProperty(land.tokenId, priceInWei);
+    console.log("List tx sent:", listTx);
+
+    const listReceipt = await listTx.wait();
+    console.log("List tx receipt:", listReceipt);
+    console.log("List transaction hash:", listTx.hash);
+
+    console.log("Step 3: Sending finalize payload to backend...");
+
+    // Step 3: Finalize listing in backend
+    const finalizePayload = {
+      approveTxHash: approveTx.hash,
+      listTxHash: listTx.hash,
+      price
     };
+
+    console.log("Final payload to backend:", finalizePayload);
+
+    const finalizeResponse = await fetch(
+      `http://localhost:5000/api/properties/${landId}/finalize-listing`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(finalizePayload),
+      }
+    );
+
+    if (!finalizeResponse.ok) {
+      const errorData = await finalizeResponse.json();
+      throw new Error(errorData.message || 'Failed to finalize listing');
+    }
+
+    const result = await finalizeResponse.json();
+
+    // Step 4: Update UI instantly
+    setMyLands(prevLands =>
+      prevLands.map(l => (l._id === landId ? result.data : l))
+    );
+    setError(null);
+
+    console.log("Property successfully listed for sale!");
+
+  } catch (err) {
+    console.error("Error in handleListForSale:", err);
+    setError(err.message);
+  }
+};
+
+
+
+
 
     // Helper to format the address
     const formatAddress = (land) => {
@@ -108,23 +147,19 @@ const MyLandsPage = () => {
         return land.propertyAddress;
     };
 
-    if (loading) {
-        return <div className="text-center py-8">Loading your lands...</div>;
-    }
-
-    if (!isAuthenticated) {
-        return <div className="text-center py-8">Please log in to view your lands.</div>;
-    }
-
-    if (myLands.length === 0 && !error) {
-        return <div className="text-center py-8">You have not registered any lands yet.</div>;
-    }
+    if (loading) return <div className="text-center py-8">Loading your lands...</div>;
+    if (!isAuthenticated) return <div className="text-center py-8">Please log in to view your lands.</div>;
+    if (myLands.length === 0 && !error) return <div className="text-center py-8">You have not registered any lands yet.</div>;
 
     return (
         <div className="container mx-auto p-4">
             <h1 className="text-3xl font-bold text-gray-800 mb-6">My Lands</h1>
-            
-            {error && <div className="p-4 mb-4 text-sm text-red-800 bg-red-100 rounded-lg" role="alert">{error}</div>}
+
+            {error && (
+                <div className="p-4 mb-4 text-sm text-red-800 bg-red-100 rounded-lg" role="alert">
+                    {error}
+                </div>
+            )}
 
             <div className="overflow-x-auto">
                 <table className="min-w-full divide-y divide-gray-200 shadow-md rounded-lg">
@@ -175,9 +210,8 @@ const MyLandsPage = () => {
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                     <button className="text-indigo-600 hover:text-indigo-900">View</button>
-                                    
                                     {land.status === 'verified' && (
-                                        <button 
+                                        <button
                                             onClick={() => handleListForSale(land._id, priceInputs[land._id])}
                                             className="ml-4 text-green-600 hover:text-green-900"
                                         >

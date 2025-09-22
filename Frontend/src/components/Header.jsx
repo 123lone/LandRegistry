@@ -269,11 +269,11 @@ const Header = () => {
                 )}
               >
                 <MessageSquare className="h-4 w-4" />{" "}
-                <span className="hidden sm:inline">Received</span>
+                <span className="hidden sm:inline">Requests</span>
               </Link>
               <Link
-                to="/owner-dashboard/sent-requests"
-                className={getSubNavLinkClass("/owner-dashboard/sent-requests")}
+                to="/owner-dashboard/requests"
+                className={getSubNavLinkClass("/owner-dashboard/requests")}
               >
                 <Send className="h-4 w-4" />{" "}
                 <span className="hidden sm:inline">Sent</span>

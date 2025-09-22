@@ -1,35 +1,33 @@
-// src/context/AuthContext.jsx
 import React, { createContext, useContext, useState, useEffect } from "react";
 
 const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
+  const [token, setToken] = useState(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
-  // Load user from localStorage on mount
+  // Load from localStorage on mount
   useEffect(() => {
     const storedUser = localStorage.getItem("user");
     const storedToken = localStorage.getItem("token");
     if (storedUser && storedToken) {
       setUser(JSON.parse(storedUser));
+      setToken(storedToken);
       setIsAuthenticated(true);
     }
   }, []);
 
-  const login = (userData) => {
-    if (!userData.email) {
-      userData.email = "N/A"; // fallback if email not returned from wallet login
-    }
+  const login = (data) => {
+    if (!data.email) data.email = "N/A";
 
-    setUser(userData);
+    setUser(data);
     setIsAuthenticated(true);
 
-    localStorage.setItem("user", JSON.stringify(userData));
+    if (data.token) setToken(data.token);
 
-    if (userData.token) {
-      localStorage.setItem("token", userData.token);
-    }
+    localStorage.setItem("user", JSON.stringify(data));
+    if (data.token) localStorage.setItem("token", data.token);
   };
 
   const logout = async () => {
@@ -38,8 +36,8 @@ export const AuthProvider = ({ children }) => {
         method: "POST",
         credentials: "include",
       });
-
       setUser(null);
+      setToken(null);
       setIsAuthenticated(false);
       localStorage.removeItem("user");
       localStorage.removeItem("token");
@@ -57,7 +55,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, isAuthenticated, login, logout, updateUser }}>
+    <AuthContext.Provider value={{ user, token, isAuthenticated, login, logout, updateUser }}>
       {children}
     </AuthContext.Provider>
   );

@@ -1,0 +1,156 @@
+import Property from '../models/propertyModel.js';
+import User from '../models/userModel.js';
+import { ethers } from 'ethers';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Read Marketplace ABI
+const marketplaceABIFile = fs.readFileSync(path.join(__dirname, '../abis/Marketplace.json'), 'utf-8');
+const MarketplaceABI = JSON.parse(marketplaceABIFile);
+
+/**
+ * @desc    Get all pending seller requests for verification
+ * @route   GET /api/requests/seller
+ * @access  Private (Seller)
+ */
+export const getSellerRequests = async (req, res) => {
+  try {
+    if (!req.user) return res.status(401).json({ message: 'Not authenticated' });
+     console.log(`[DEBUG] Logged-in User ID: ${req.user.id}`);
+
+    // ✅ FIXED: Changed 'seller' to 'owner' to match your database schema
+    const properties = await Property.find({
+      owner: req.user.id,
+      status: 'pending_seller_verification'
+    }).populate('buyer', 'name email phone'); // Populates the potential buyer's info
+
+    console.log("Fetched pending requests:", properties);
+
+    res.status(200).json({
+      success: true,
+      data: properties
+    });
+  } catch (error) {
+    console.error('Error fetching seller requests:', error);
+    res.status(500).json({ message: 'Server error fetching requests' });
+  }
+};
+
+/**
+ * @desc    Approve a pending sale request
+ * @route   POST /api/requests/:id/approve
+ * @access  Private (Seller)
+ */
+export const approveSale = async (req, res) => {
+    try {
+        const property = await Property.findById(req.params.id);
+        if (!property) {
+            return res.status(404).json({ message: 'Property not found' });
+        }
+
+        // ✅ FIXED: Authorization check now uses 'owner'
+        if (property.owner.toString() !== req.user.id) {
+            return res.status(403).json({ message: 'Not authorized to approve this sale' });
+        }
+
+        if (property.status !== 'pending_seller_verification') {
+            return res.status(400).json({ message: 'Property is not pending verification.' });
+        }
+
+        // Note: The frontend should have already called the smart contract's 'approveSale' function.
+        // This endpoint finalizes the sale in the database.
+
+        property.status = 'sold';
+        property.owner = property.buyer; // Transfer ownership to the buyer
+        property.buyer = null; // Clear the temporary buyer field
+
+        await property.save();
+
+        res.status(200).json({
+            success: true,
+            message: 'Sale approved and database updated successfully.',
+            data: property
+        });
+
+    } catch (error) {
+        console.error('Error approving sale:', error);
+        res.status(500).json({ message: 'Server error while approving sale' });
+    }
+};
+
+
+/**
+ * @desc    Reject a pending sale request
+ * @route   POST /api/requests/:id/reject
+ * @access  Private (Seller)
+ */
+export const rejectTrade = async (req, res) => {
+  try {
+    const property = await Property.findById(req.params.id);
+    if (!property) return res.status(404).json({ message: 'Property not found' });
+
+    // ✅ FIXED: Authorization check now uses 'owner'
+    if (property.owner.toString() !== req.user.id) {
+      return res.status(403).json({ message: 'Not authorized' });
+    }
+    
+    // Note: The frontend should call the smart contract's 'rejectSale' function
+    // to refund the buyer from escrow before hitting this endpoint.
+
+    property.status = 'listed_for_sale';
+    property.buyer = null; // Clear the potential buyer
+    await property.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Sale request rejected successfully.',
+      data: property
+    });
+
+  } catch (error) {
+    console.error('Error rejecting trade:', error);
+    res.status(500).json({ message: 'Server error while rejecting trade' });
+  }
+};
+
+/**
+ * @desc    Withdraw seller's proceeds from the contract
+ * @route   POST /api/requests/withdraw
+ * @access  Private (Seller)
+ */
+export const withdrawFunds = async (req, res) => {
+  try {
+    if (!req.user) {
+        return res.status(401).json({ message: 'Not authenticated' });
+    }
+
+    // CRITICAL: This uses a server-side wallet for secure blockchain transactions.
+    const provider = new ethers.JsonRpcProvider(process.env.YOUR_RPC_URL);
+    const signer = new ethers.Wallet(process.env.SERVER_WALLET_PRIVATE_KEY, provider);
+
+    const marketplaceContract = new ethers.Contract(
+      process.env.VITE_MARKETPLACE_ADDRESS,
+      MarketplaceABI.abi,
+      signer
+    );
+
+    console.log(`Initiating withdrawal for ${signer.address}...`);
+    const tx = await marketplaceContract.withdrawProceeds();
+    const receipt = await tx.wait();
+    console.log(`Withdrawal successful. TxHash: ${receipt.transactionHash}`);
+    
+    res.status(200).json({
+      success: true,
+      message: 'Funds withdrawn successfully',
+      txHash: receipt.transactionHash,
+    });
+
+  } catch (error) {
+    console.error('Error withdrawing funds:', error);
+    res.status(500).json({ message: 'Server error during withdrawal' });
+  }
+};

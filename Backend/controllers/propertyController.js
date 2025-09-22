@@ -312,28 +312,24 @@ export const verifyPropertyDocuments = async (req, res) => {
 export const prepareListingForSale = async (req, res) => {
   try {
     const property = await Property.findById(req.params.id);
-    if (!property) {
-      return res.status(404).json({ message: 'Property not found' });
-    }
-    if (property.owner.toString() !== req.user.id) {
+    if (!property) return res.status(404).json({ message: 'Property not found' });
+
+    if (property.owner.toString() !== req.user.id)
       return res.status(403).json({ message: 'User not authorized' });
-    }
 
     const { price } = req.body;
-    if (!price) {
-      return res.status(400).json({ message: 'Price is required' });
-    }
-    
+    if (!price || isNaN(price) || Number(price) <= 0)
+      return res.status(400).json({ message: 'Valid price is required' });
+
     const contractInterface = new ethers.Interface(PropertyTitleABI.abi);
-    // Creates transaction data to call 'approve' on the NFT contract,
-    // giving the Marketplace permission to transfer this NFT.
+
     const encodedFunctionCall = contractInterface.encodeFunctionData('approve', [
-      process.env.MARKETPLACE_ADDRESS, // Your marketplace contract address from .env
-      property.tokenId
+      process.env.MARKETPLACE_ADDRESS, // Marketplace contract
+      property.tokenId,
     ]);
 
     const transactionData = {
-      to: process.env.PROPERTYTITLE_ADDRESS, // The NFT contract address
+      to: process.env.PROPERTYTITLE_ADDRESS, // NFT contract
       data: encodedFunctionCall,
     };
 
@@ -343,42 +339,46 @@ export const prepareListingForSale = async (req, res) => {
       transactionData,
     });
   } catch (error) {
-    console.error('Error preparing listing:', error);
+    console.error('Error preparing listing:', error.message);
     res.status(500).json({ message: 'Server error while preparing listing.' });
   }
 };
 
 /**
- * @desc    Step 2: Finalize the listing after transaction is confirmed.
+ * @desc    Step 2: Finalize the listing after transaction is confirmed
  * @route   POST /api/properties/:id/finalize-listing
  * @access  Private (Owner)
  */
 export const finalizeListingForSale = async (req, res) => {
   try {
-    const { transactionHash, price } = req.body;  // ✅ include price
+    const { approveTxHash, listTxHash, price } = req.body;
+    if (!approveTxHash || !listTxHash || !price)
+      return res.status(400).json({ message: 'Transaction hashes and price are required' });
 
-    if (!transactionHash) {
-      return res.status(400).json({ message: 'Transaction hash is required' });
-    }
+    if (isNaN(price) || Number(price) <= 0)
+      return res.status(400).json({ message: 'Invalid price' });
 
     const property = await Property.findById(req.params.id);
-    if (!property) {
-      return res.status(404).json({ message: 'Property not found' });
-    }
-    if (property.owner.toString() !== req.user.id) {
+    if (!property) return res.status(404).json({ message: 'Property not found' });
+
+    if (property.owner.toString() !== req.user.id)
       return res.status(403).json({ message: 'User not authorized' });
-    }
 
-    // Verify the transaction was successful on the blockchain
     const provider = new ethers.JsonRpcProvider(process.env.GANACHE_URL);
-    const receipt = await provider.waitForTransaction(transactionHash);
-    if (receipt.status === 0) {
-      throw new Error('Blockchain transaction failed and was reverted.');
-    }
 
-    // Update the property status and save the price
+    // Verify approval transaction
+    const approveReceipt = await provider.waitForTransaction(approveTxHash);
+    if (!approveReceipt || approveReceipt.status === 0)
+      throw new Error('Approval transaction failed');
+
+    // Verify listing transaction
+    const listReceipt = await provider.waitForTransaction(listTxHash);
+    if (!listReceipt || listReceipt.status === 0)
+      throw new Error('Listing transaction failed');
+
+    // Update property in DB
     property.status = 'listed_for_sale';
-    property.price = price;   // ✅ save the price entered by user
+    property.price = Number(price);
     await property.save();
 
     res.status(200).json({
@@ -386,11 +386,12 @@ export const finalizeListingForSale = async (req, res) => {
       message: 'Property successfully listed for sale!',
       data: property,
     });
-  } catch (error){
-    console.error('Error finalizing listing:', error);
+  } catch (error) {
+    console.error('Error finalizing listing:', error.message);
     res.status(500).json({ message: 'Server error while finalizing listing.' });
   }
 };
+
 
 
 

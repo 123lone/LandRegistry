@@ -10,6 +10,7 @@ import authRoutes from './routes/authRoutes.js';
 import kycRoutes from './routes/kycRoutes.js';
 import propertyRoutes from './routes/propertyRoutes.js';
 import verifierRoutes from './routes/verifierRoutes.js';
+import requestsRoutes from './routes/requests.js';
 
 // ESM doesn’t have __dirname / __filename by default
 const __filename = fileURLToPath(import.meta.url);
@@ -36,6 +37,7 @@ app.use('/api/verifier', verifierRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/kyc', kycRoutes);
 app.use('/api/properties', propertyRoutes);
+app.use('/api/requests', requestsRoutes);
 
 const PORT = process.env.PORT || 5000;
 

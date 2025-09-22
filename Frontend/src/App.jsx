@@ -34,6 +34,7 @@ import OwnerDashboard from './pages/owner/OwnerDashboard';
 import OwnerProfile from './pages/owner/OwnerProfile';
 import AddLandPage from './pages/owner/AddLandPage';
 import MyLandsPage from './pages/owner/MyLandsPage';
+import RequestsPage from './pages/owner/RequestsPage';
 // import ReceivedRequestsPage from './pages/owner/ReceivedRequestsPage';
 // import SentRequestsPage from './pages/owner/SentRequestsPage';
 
@@ -105,6 +106,7 @@ function App() {
                 <Route path="profile" element={<OwnerProfile />} />
                 <Route path="add-land" element={<AddLandPage />} />
                 <Route path="my-lands" element={<MyLandsPage />} />
+                <Route path="requests" element={<RequestsPage />} />
              
                 
               </Route>
