@@ -1,6 +1,7 @@
 import jwt from 'jsonwebtoken';
 import User from '../models/userModel.js';
-
+import Property from '../models/propertyModel.js';
+import {ethers} from 'ethers';
 // Protect routes (check JWT)
 export const protect = async (req, res, next) => {
   let token = req.cookies.jwt;
@@ -56,4 +57,26 @@ export const isOwner = async (req, res, next) => {
     // If the checks pass, attach the property to the request and continue
     req.property = property; 
     next();
+};
+export const authMiddleware = (req, res, next) => {
+  try {
+    const { walletAddress, signature, signedMessage } = req.body;
+    if (!walletAddress || !signature || !signedMessage) {
+      return res.status(401).json({ message: 'Authentication details missing.' });
+    }
+
+    // Recover the address that signed the message
+    const recoveredAddress = ethers.utils.verifyMessage(signedMessage, signature);
+
+    // Check if the recovered address matches the one provided
+    if (recoveredAddress.toLowerCase() !== walletAddress.toLowerCase()) {
+      return res.status(401).json({ message: 'Invalid signature.' });
+    }
+
+    // If valid, attach the user's address to the request object for later use
+    req.user = { walletAddress: recoveredAddress.toLowerCase() };
+    next();
+  } catch (error) {
+    res.status(401).json({ message: 'Authentication failed.' });
+  }
 };

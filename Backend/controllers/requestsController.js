@@ -154,3 +154,47 @@ export const withdrawFunds = async (req, res) => {
     res.status(500).json({ message: 'Server error during withdrawal' });
   }
 };
+
+export const getPropertyByTokenId = async (req, res) => {
+  try {
+    const { tokenId } = req.params;
+    
+    if (!tokenId) {
+      return res.status(400).json({ message: 'Token ID is required' });
+    }
+
+    const property = await Property.findOne({ tokenId })
+      .select('title description location price tokenId status createdAt')
+      .populate('owner', 'name email');
+
+    if (!property) {
+      return res.status(404).json({ message: 'Property not found' });
+    }
+
+    res.json(property);
+  } catch (error) {
+    console.error('Error fetching property by token ID:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+// Get seller's sold properties with buyer details
+export const getSellerSales = async (req, res) => {
+  try {
+    const sellerId = req.user._id;
+    
+    // Find all properties that were owned by this seller and are now sold
+    const soldProperties = await Property.find({
+      previousOwner: sellerId, // You might need to add this field
+      status: 'sold'
+    })
+    .populate('owner', 'name email phone walletAddress') // Current owner (buyer)
+    .select('title description location price tokenId transactionHash soldAt')
+    .sort({ soldAt: -1 });
+
+    res.json(soldProperties);
+  } catch (error) {
+    console.error('Error fetching seller sales:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};

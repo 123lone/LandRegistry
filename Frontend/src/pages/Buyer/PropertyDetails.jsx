@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { MapPin, DollarSign, Ruler, FileText, CheckCircle, LinkIcon, ArrowLeft, Hash, ClipboardList, User, Mail, Phone, Loader2 } from 'lucide-react';
 import { ethers } from 'ethers';
 import marketplaceABI from  '../../abis/Marketplace.json';
+import { useAuth } from '../../context/AuthContext';
 const PropertyDetailsPage = () => {
     const { id } = useParams();
     const [property, setProperty] = useState(null);
@@ -120,23 +121,47 @@ const PropertyDetailsPage = () => {
             setPurchaseStatus('Purchase successful! Updating database...');
 
             // Confirm sale in backend
+            console.log('Property ID:', property._id);
+            console.log('Making API call to:', `http://localhost:5000/api/properties/${property._id}/confirm-sale`);
+
             const response = await fetch(`http://localhost:5000/api/properties/${property._id}/confirm-sale`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 
+                    'Content-Type': 'application/json',
+                    // Add any auth headers if needed
+                    // 'Authorization': `Bearer ${token}`
+                },
                 credentials: 'include',
-                body: JSON.stringify({ buyerWalletAddress: userWallet, transactionHash: tx.hash })
+                body: JSON.stringify({ 
+                    buyerWalletAddress: userWallet, 
+                    transactionHash: tx.hash 
+                })
             });
 
+            console.log('API Response status:', response.status);
+            console.log('API Response headers:', response.headers);
+
             if (response.ok) {
+                const responseData = await response.json();
+                console.log('API Response data:', responseData);
                 setPurchaseStatus('Purchase completed successfully!');
+                
                 // Refresh property data
-                const updatedResponse = await fetch(`http://localhost:5000/api/properties/${property._id}`, {
-                    credentials: 'include',
-                });
-                const updatedProperty = await updatedResponse.json();
-                setProperty(updatedProperty);
+                try {
+                    const updatedResponse = await fetch(`http://localhost:5000/api/properties/${property._id}`, {
+                        credentials: 'include',
+                    });
+                    if (updatedResponse.ok) {
+                        const updatedProperty = await updatedResponse.json();
+                        setProperty(updatedProperty);
+                    }
+                } catch (refreshError) {
+                    console.warn('Failed to refresh property data:', refreshError);
+                }
             } else {
-                setPurchaseStatus('Blockchain transaction successful, but database update failed.');
+                const errorText = await response.text();
+                console.error('API Error response:', errorText);
+                setPurchaseStatus(`Blockchain transaction successful, but database update failed. Status: ${response.status}`);
             }
         } else {
             throw new Error('Transaction failed');
@@ -145,9 +170,17 @@ const PropertyDetailsPage = () => {
     } catch (error) {
         console.error('Purchase error:', error);
         let errorMessage = 'Purchase failed. ';
-        if (error.code === 4001) errorMessage += 'Transaction was rejected by user.';
-        else if (error.message.includes('insufficient funds')) errorMessage += 'Insufficient funds in wallet.';
-        else errorMessage += error.message || 'Unknown error occurred.';
+        
+        if (error.code === 4001) {
+            errorMessage += 'Transaction was rejected by user.';
+        } else if (error.message.includes('insufficient funds')) {
+            errorMessage += 'Insufficient funds in wallet.';
+        } else if (error.name === 'TypeError' && error.message.includes('fetch')) {
+            errorMessage += 'Failed to connect to server. Please check if the backend is running.';
+        } else {
+            errorMessage += error.message || 'Unknown error occurred.';
+        }
+        
         setPurchaseStatus(errorMessage);
     } finally {
         setPurchaseLoading(false);

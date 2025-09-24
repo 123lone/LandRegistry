@@ -2,8 +2,10 @@ import express from 'express';
 import { protect, isVerifiedSeller } from '../middlewares/authMiddleware.js';
 import {
   getSellerRequests,
-  withdrawFunds,   // <-- correct name
-  rejectTrade
+  withdrawFunds,
+  rejectTrade,
+  getSellerSales,
+  getPropertyByTokenId
 } from '../controllers/requestsController.js';
 
 const router = express.Router();
@@ -19,5 +21,7 @@ router.post('/:id/withdraw', withdrawFunds);  // <-- use withdrawFunds
 
 // POST reject a trade
 router.post('/:id/reject', rejectTrade);
+router.get('/by-token/:tokenId', getPropertyByTokenId);
+router.get('/my-sales', protect, getSellerSales);
 
 export default router;

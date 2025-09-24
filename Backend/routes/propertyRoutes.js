@@ -1,7 +1,7 @@
 import express from 'express';
 import multer from 'multer';
-
-import {
+import { authMiddleware } from '../middlewares/authMiddleware.js';
+import { 
   preparePropertyRegistration,
   finalizePropertyRegistration,
   verifyPropertyDocuments,

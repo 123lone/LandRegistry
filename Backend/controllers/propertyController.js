@@ -16,6 +16,9 @@ const __dirname = path.dirname(__filename);
 const propertyTitleABIFile = fs.readFileSync(path.join(__dirname, '../abis/PropertyTitle.json'), 'utf-8');
 const PropertyTitleABI = JSON.parse(propertyTitleABIFile);
 
+const marketplaceABIFile = fs.readFileSync(path.join(__dirname, '../abis/MarketPlace.json'), 'utf-8');
+const marketplaceABI = JSON.parse(marketplaceABIFile).abi;
+
 // --- Admin Registration Workflow ---
 export const preparePropertyRegistration = async (req, res) => {
   const { propertyId } = req.body;
@@ -188,11 +191,14 @@ export const finalizePropertyRegistration = async (req, res) => {
 
 
 // --- User Document Verification Workflow ---
+// --- User Document Verification Workflow ---
+// --- User Document Verification Workflow ---
 export const verifyPropertyDocuments = async (req, res) => {
   const tempDir = path.join(__dirname, '../Uploads', `verify-${Date.now()}`);
   try {
     const { district, surveyNumber } = req.body;
     const files = req.files;
+    const requesterAddress = req.body.walletAddress;
 
     // Log incoming data for debugging
     console.log('Received data:', { district, surveyNumber, files: Object.keys(files || {}) });
@@ -218,6 +224,11 @@ export const verifyPropertyDocuments = async (req, res) => {
     // 3. Check if already verified
     if (property.status === 'verified') {
       return res.status(400).json({ message: 'This property has already been verified.' });
+    }
+    if (property.ownerWalletAddress.toLowerCase() !== requesterAddress.toLowerCase()) {
+      console.log(property.ownerWalletAddress, requesterAddress );
+      
+      return res.status(403).json({ message: 'Forbidden: You are not the owner of this property.' });
     }
 
     // 4. Validate documentHashes
@@ -430,30 +441,40 @@ export const getPropertyById = async (req, res) => {
   }
 };
 export const confirmSale = async (req, res) => {
+    console.log('=== confirmSale controller reached ===');
+    console.log('Authenticated user:', req.user?._id, req.user?.walletAddress);
+
     try {
         const { buyerWalletAddress, transactionHash } = req.body;
+
         if (!buyerWalletAddress || !transactionHash) {
             return res.status(400).json({ message: 'Buyer wallet address and transaction hash are required.' });
         }
-
-        const newOwner = await User.findOne({ walletAddress: buyerWalletAddress });
-        if (!newOwner) {
-            return res.status(404).json({ message: 'Buyer not found in our database.' });
+        // Verify that the authenticated user's wallet matches the buyer wallet
+        if (!req.user || !req.user.walletAddress) {
+            return res.status(401).json({ message: 'User not properly authenticated.' });
         }
-
+        const userWallet = req.user.walletAddress.toLowerCase();
+        const buyerWallet = buyerWalletAddress.toLowerCase();
+        if (userWallet !== buyerWallet) {
+            console.log('Wallet mismatch:', { userWallet, buyerWallet });
+            return res.status(403).json({ message: 'Wallet address does not match authenticated user.' });
+        }
+        console.log('Looking for property with ID:', req.params.id);
         const property = await Property.findById(req.params.id);
         if (!property) {
             return res.status(404).json({ message: 'Property not found' });
         }
-
+        console.log('Property found, updating status...');
         property.status = 'sold';
-        property.owner = newOwner._id;
+        property.owner = req.user._id; // Use authenticated user directly
         property.transactionHash = transactionHash;
-
         const updatedProperty = await property.save();
-        res.json({ message: 'Sale confirmed and database updated.', property: updatedProperty });
+        console.log('Property updated successfully');
 
+        res.json({ message: 'Sale confirmed and database updated.', property: updatedProperty });
     } catch (error) {
-        res.status(500).json({ message: 'Server Error' });
+        console.error('Error in confirmSale:', error);
+        res.status(500).json({ message: 'Server Error', error: error.message });
     }
 };

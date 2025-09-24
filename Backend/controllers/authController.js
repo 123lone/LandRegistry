@@ -41,6 +41,7 @@ export const updateUserWallet = async (req, res) => {
     }
 
     const { walletAddress } = req.body;
+    walletAddress=walletAddress.toLowerCase();
 
     // Validate wallet format
     if (!walletAddress || !/^0x[a-fA-F0-9]{40}$/.test(walletAddress)) {
@@ -150,11 +151,13 @@ export const loginWithWallet = async (req, res) => {
       return res.status(400).json({ message: "Valid wallet address required" });
     }
 
-    // Find user with that wallet - include all necessary fields
-    const user = await User.findOne({ walletAddress }).select(
+    // Find user with case-insensitive match
+    const user = await User.findOne({
+      walletAddress: { $regex: new RegExp(`^${walletAddress}$`, "i") }
+    }).select(
       '_id name email role kycStatus walletAddress propertiesOwned totalValue createdAt'
     );
-    
+
     if (!user) {
       return res.status(404).json({ message: "Wallet not registered" });
     }
@@ -173,20 +176,20 @@ export const loginWithWallet = async (req, res) => {
     // Set cookie
     res.cookie("jwt", token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production', // Use secure in production
+      secure: process.env.NODE_ENV === 'production',
       sameSite: "strict",
-      maxAge: 30 * 60 * 1000, // 30 minutes
+      maxAge: 30 * 60 * 1000,
     });
 
     // Respond with comprehensive user info
     const responseData = {
       id: user._id,
-      _id: user._id, // Keep both for compatibility
+      _id: user._id,
       name: user.name,
-      email: user.email || null, // Explicitly include email (might be null)
+      email: user.email || null,
       role: user.role,
       kycStatus: user.kycStatus,
-      walletAddress: user.walletAddress,
+      walletAddress: user.walletAddress, // return as stored
       propertiesOwned: user.propertiesOwned || 0,
       totalValue: user.totalValue || 0,
       token,
@@ -198,5 +201,31 @@ export const loginWithWallet = async (req, res) => {
   } catch (error) {
     console.error("Wallet login error:", error);
     res.status(500).json({ message: "Server error during wallet login" });
+  }
+};
+export const getUserByWallet = async (req, res) => {
+  try {
+    const { walletAddress } = req.params;
+    
+    if (!walletAddress) {
+      return res.status(400).json({ message: 'Wallet address is required' });
+    }
+
+    // Convert input to lowercase
+    const normalizedWallet = walletAddress.toLowerCase();
+
+    // Query by lowercase wallet
+    const user = await User.findOne({
+      walletAddress: normalizedWallet
+    }).select('name email phone walletAddress createdAt');
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    res.json(user);
+  } catch (error) {
+    console.error('Error fetching user by wallet:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
   }
 };

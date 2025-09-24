@@ -1,60 +1,91 @@
-import { useState, useEffect } from 'react';
-import { FileCheck2, Loader2, ShieldCheck, ShieldX } from 'lucide-react'
+import { useState } from "react";
+import { FileCheck2, Loader2, ShieldCheck, ShieldX } from "lucide-react";
+import { BrowserProvider } from "ethers"; // ✅ v6 import
 
 export default function AddLandListingForm() {
-  const [district, setDistrict] = useState('')
-  const [surveyNumber, setSurveyNumber] = useState('')
-  const [motherDeed, setMotherDeed] = useState(null)
-  const [encumbranceCert, setEncumbranceCert] = useState(null)
-  const [isLoading, setIsLoading] = useState(false)
-  const [feedback, setFeedback] = useState({ type: '', message: '' })
+  const [district, setDistrict] = useState("");
+  const [surveyNumber, setSurveyNumber] = useState("");
+  const [motherDeed, setMotherDeed] = useState(null);
+  const [encumbranceCert, setEncumbranceCert] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [feedback, setFeedback] = useState({ type: "", message: "" });
 
   const handleSubmit = async (e) => {
-    e.preventDefault()
+    e.preventDefault();
+
     if (!district || !surveyNumber || !motherDeed || !encumbranceCert) {
-      setFeedback({ type: 'error', message: 'Please fill in all fields and upload both documents.' })
-      return
+      setFeedback({
+        type: "error",
+        message: "Please fill in all fields and upload both documents.",
+      });
+      return;
     }
 
-    setIsLoading(true)
-    setFeedback({ type: '', message: '' })
-
-    const formData = new FormData()
-    formData.append('district', district)
-    formData.append('surveyNumber', surveyNumber)
-    formData.append('motherDeed', motherDeed)
-    formData.append('encumbranceCertificate', encumbranceCert)
+    setIsLoading(true);
+    setFeedback({ type: "", message: "" });
 
     try {
-      const response = await fetch('http://localhost:5000/api/properties/verify-documents', {
-        method: 'POST',
-        body: formData,
-      })
+      if (!window.ethereum) throw new Error("MetaMask is not installed.");
 
-      const result = await response.json()
+      // ✅ Ethers v6 way
+      const provider = new BrowserProvider(window.ethereum);
+      await provider.send("eth_requestAccounts", []);
+      const signer = await provider.getSigner();
+      const walletAddress = await signer.getAddress();
 
-      if (!response.ok) {
-        throw new Error(result.message || 'Verification failed.')
-      }
+      const messageToSign = `I am verifying the property with Survey Number: ${surveyNumber}.`;
+      const signature = await signer.signMessage(messageToSign);
 
-      setFeedback({ type: 'success', message: result.message })
+      const formData = new FormData();
+      formData.append("district", district);
+      formData.append("surveyNumber", surveyNumber);
+      formData.append("motherDeed", motherDeed);
+      formData.append("encumbranceCertificate", encumbranceCert);
+      formData.append("walletAddress", walletAddress);
+      formData.append("signature", signature);
+      formData.append("signedMessage", messageToSign);
+
+      const response = await fetch(
+        "http://localhost:5000/api/properties/verify-documents",
+        {
+          method: "POST",
+          body: formData,
+          credentials: "include",
+        }
+      );
+
+      const result = await response.json();
+      if (!response.ok)
+        throw new Error(result.message || "Verification failed.");
+
+      setFeedback({ type: "success", message: result.message });
     } catch (error) {
-      setFeedback({ type: 'error', message: error.message })
+      setFeedback({ type: "error", message: error.message });
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
 
   const FeedbackMessage = () => {
-    if (!feedback.message) return null
-    const isSuccess = feedback.type === 'success'
+    if (!feedback.message) return null;
+    const isSuccess = feedback.type === "success";
     return (
-      <div className={`p-4 mb-4 border rounded-md flex items-center space-x-3 ${isSuccess ? 'bg-green-100 border-green-400 text-green-800' : 'bg-red-100 border-red-400 text-red-800'}`}>
-        {isSuccess ? <ShieldCheck className="h-5 w-5" /> : <ShieldX className="h-5 w-5" />}
+      <div
+        className={`p-4 mb-4 border rounded-md flex items-center space-x-3 ${
+          isSuccess
+            ? "bg-green-100 border-green-400 text-green-800"
+            : "bg-red-100 border-red-400 text-red-800"
+        }`}
+      >
+        {isSuccess ? (
+          <ShieldCheck className="h-5 w-5" />
+        ) : (
+          <ShieldX className="h-5 w-5" />
+        )}
         <span>{feedback.message}</span>
       </div>
-    )
-  }
+    );
+  };
 
   return (
     <div className="max-w-2xl mx-auto p-8 bg-white rounded-lg shadow-md my-12">
@@ -66,7 +97,12 @@ export default function AddLandListingForm() {
         <FeedbackMessage />
 
         <div>
-          <label htmlFor="district" className="block text-sm font-medium text-gray-700">District *</label>
+          <label
+            htmlFor="district"
+            className="block text-sm font-medium text-gray-700"
+          >
+            District *
+          </label>
           <input
             type="text"
             id="district"
@@ -78,7 +114,12 @@ export default function AddLandListingForm() {
         </div>
 
         <div>
-          <label htmlFor="surveyNumber" className="block text-sm font-medium text-gray-700">Survey Number *</label>
+          <label
+            htmlFor="surveyNumber"
+            className="block text-sm font-medium text-gray-700"
+          >
+            Survey Number *
+          </label>
           <input
             type="text"
             id="surveyNumber"
@@ -90,7 +131,12 @@ export default function AddLandListingForm() {
         </div>
 
         <div>
-          <label htmlFor="motherDeed" className="block text-sm font-medium text-gray-700">Mother Deed (PDF) *</label>
+          <label
+            htmlFor="motherDeed"
+            className="block text-sm font-medium text-gray-700"
+          >
+            Mother Deed (PDF) *
+          </label>
           <input
             type="file"
             id="motherDeed"
@@ -102,7 +148,12 @@ export default function AddLandListingForm() {
         </div>
 
         <div>
-          <label htmlFor="encumbranceCert" className="block text-sm font-medium text-gray-700">Encumbrance Certificate (PDF) *</label>
+          <label
+            htmlFor="encumbranceCert"
+            className="block text-sm font-medium text-gray-700"
+          >
+            Encumbrance Certificate (PDF) *
+          </label>
           <input
             type="file"
             id="encumbranceCert"
@@ -118,9 +169,13 @@ export default function AddLandListingForm() {
           disabled={isLoading}
           className="w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-lg font-medium text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50"
         >
-          {isLoading ? <Loader2 className="animate-spin" /> : 'Confirm & Verify Documents'}
+          {isLoading ? (
+            <Loader2 className="animate-spin" />
+          ) : (
+            "Confirm & Verify Documents"
+          )}
         </button>
       </form>
     </div>
-  )
+  );
 }
