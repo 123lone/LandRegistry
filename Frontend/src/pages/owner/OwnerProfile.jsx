@@ -23,18 +23,7 @@ const OwnerProfile = () => {
             <p><strong>Email:</strong> {user.email || 'N/A'}</p>
           </div>
         </div>
-        <div className="bg-gray-100 p-6 rounded-lg shadow-inner">
-          <h2 className="text-xl font-semibold text-gray-700 mb-4">Your Properties</h2>
-          <div className="space-y-2">
-            {/* KEY CHANGE:
-              Instead of reading from a separate 'profileData' state,
-              we now read 'propertiesOwned' and 'totalValue' directly 
-              from the main 'user' object from the context.
-            */}
-            <p><strong>Properties Owned:</strong> {user.propertiesOwned || 0}</p>
-            <p><strong>Total Value:</strong> {user.totalValue ? `${user.totalValue} ETH` : '0 ETH'}</p>
-          </div>
-        </div>
+      
       </div>
     </div>
   );

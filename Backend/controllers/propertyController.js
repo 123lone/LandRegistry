@@ -448,31 +448,45 @@ export const confirmSale = async (req, res) => {
         const { buyerWalletAddress, transactionHash } = req.body;
 
         if (!buyerWalletAddress || !transactionHash) {
-            return res.status(400).json({ message: 'Buyer wallet address and transaction hash are required.' });
+            console.log(buyerWalletAddress, transactionHash);
+            return res.status(400).json({ message: 'Buyer wallet and transaction hash are required.' });
         }
-        // Verify that the authenticated user's wallet matches the buyer wallet
+
         if (!req.user || !req.user.walletAddress) {
             return res.status(401).json({ message: 'User not properly authenticated.' });
         }
+
         const userWallet = req.user.walletAddress.toLowerCase();
         const buyerWallet = buyerWalletAddress.toLowerCase();
         if (userWallet !== buyerWallet) {
             console.log('Wallet mismatch:', { userWallet, buyerWallet });
             return res.status(403).json({ message: 'Wallet address does not match authenticated user.' });
         }
+
+        // Find the property being sold
         console.log('Looking for property with ID:', req.params.id);
         const property = await Property.findById(req.params.id);
         if (!property) {
             return res.status(404).json({ message: 'Property not found' });
         }
-        console.log('Property found, updating status...');
-        property.status = 'sold';
-        property.owner = req.user._id; // Use authenticated user directly
+
+        console.log('Property found, updating sale info...');
+
+        // Update the existing property with sale info
+        property.previousOwner = property.owner; // record old owner
+        property.owner = req.user._id; // new owner
+        property.status = 'verified';
         property.transactionHash = transactionHash;
+        property.soldAt = new Date();
+
         const updatedProperty = await property.save();
+
         console.log('Property updated successfully');
 
-        res.json({ message: 'Sale confirmed and database updated.', property: updatedProperty });
+        res.json({
+            message: 'Sale confirmed and property updated successfully.',
+            property: updatedProperty
+        });
     } catch (error) {
         console.error('Error in confirmSale:', error);
         res.status(500).json({ message: 'Server Error', error: error.message });

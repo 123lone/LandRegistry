@@ -1,9 +1,9 @@
 import React from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 
-// --- 1. IMPORT THE HOOKS FROM YOUR CONTEXTS ---
+// --- 1. IMPORT HOOKS ---
 import { useAuth } from "../context/AuthContext";
-import { useWallet } from "../context/WalletContext"; // Import the useWallet hook
+import { useWallet } from "../context/WalletContext"; 
 
 import {
   User,
@@ -26,14 +26,11 @@ const truncateAddress = (address) => {
 
 const Header = () => {
   const { logout, user, updateUser } = useAuth();
-
-  // --- 2. GET WALLET STATE FROM THE CONTEXT ---
-  const { account, connectWallet } = useWallet(); // Get the live account and connect function
-
+  const { connectWallet } = useWallet(); // only need connect function
   const navigate = useNavigate();
   const location = useLocation();
 
-  // This function still saves the address to your backend database
+  // Save wallet to DB
   const saveWalletAddressToDB = async (address) => {
     try {
       if (user.walletAddress === address) {
@@ -61,38 +58,30 @@ const Header = () => {
     }
   };
 
-  // --- 3. CREATE A NEW HANDLER TO CONNECT AND SAVE ---
-  // This new function uses the logic from both contexts
+  // Connect and save wallet
   const handleConnectAndSave = async () => {
     try {
-      // First, connect the wallet using the logic from WalletContext
-      const newAccount = await connectWallet("user"); // Or 'buyer', 'seller'
-
-      // If the connection is successful, then save the address to the backend
+      const newAccount = await connectWallet("user");
       if (newAccount) {
         await saveWalletAddressToDB(newAccount);
       }
     } catch (error) {
-      console.error(
-        "Error during wallet connection and saving process:",
-        error
-      );
+      console.error("Error during wallet connection:", error);
       alert("An error occurred during the connection process.");
     }
   };
 
-  // ... (All your existing navigation and styling logic remains the same, as it's excellent) ...
+  // --- PAGE DETECTION ---
   const isVerifierPage = location.pathname.startsWith("/verifier");
   const isOwnerDashboard = location.pathname.startsWith("/owner-dashboard");
   const isBuyerDashboard = location.pathname.startsWith("/buyer-dashboard");
-  const isGovernmentRegistry = location.pathname.startsWith(
-    "/government-registry"
-  );
+  const isGovernmentRegistry = location.pathname.startsWith("/government-registry");
 
   if (isGovernmentRegistry) return null;
 
   const isDashboardOrVerifier =
     isVerifierPage || isOwnerDashboard || isBuyerDashboard;
+
   const headerClasses = isDashboardOrVerifier
     ? "bg-white text-gray-800 shadow-sm"
     : "bg-gray-900 text-white shadow-lg";
@@ -173,28 +162,16 @@ const Header = () => {
           <nav className="hidden md:flex items-center space-x-6">
             {isVerifierPage ? (
               <>
-                <Link
-                  to="/verifier-dashboard"
-                  className={`${linkClasses} font-medium`}
-                >
+                <Link to="/verifier-dashboard" className={`${linkClasses} font-medium`}>
                   Dashboard
                 </Link>
-                <Link
-                  to="/verifier/users"
-                  className={`${linkClasses} font-medium`}
-                >
+                <Link to="/verifier/users" className={`${linkClasses} font-medium`}>
                   Verify User
                 </Link>
-                <Link
-                  to="/verifier/lands"
-                  className={`${linkClasses} font-medium`}
-                >
+                <Link to="/verifier/lands" className={`${linkClasses} font-medium`}>
                   Verify Land
                 </Link>
-                <Link
-                  to="/verifier/transfers"
-                  className={`${linkClasses} font-medium`}
-                >
+                <Link to="/verifier/transfers" className={`${linkClasses} font-medium`}>
                   Transfer Ownership
                 </Link>
               </>
@@ -216,97 +193,67 @@ const Header = () => {
             ) : null}
           </nav>
 
+          {/* --- Wallet Section --- */}
           <div className="flex items-center">
-            {/* --- 4. UPDATE THE UI TO USE THE NEW LOGIC --- */}
-            {user &&
-              user.kycStatus === "verified" &&
-              // Use the 'account' from WalletContext for real-time status
-              (account ? (
+            {user && user.kycStatus === "verified" && (
+              user.walletAddress ? (
                 <div className="bg-green-100 text-green-800 px-4 py-2 font-semibold rounded-lg text-sm">
-                  {truncateAddress(account)}
+                  {truncateAddress(user.walletAddress)}
                 </div>
               ) : (
                 <button
-                  // The button now calls the new handler function
                   onClick={handleConnectAndSave}
                   className="bg-blue-600 text-white px-4 py-2 font-semibold rounded-lg shadow-md hover:bg-blue-700 transition-colors"
                 >
                   Connect Wallet
                 </button>
-              ))}
+              )
+            )}
           </div>
         </div>
 
-        {/* --- All your sub-navigation logic remains unchanged --- */}
+        {/* Sub navigation */}
         {isOwnerDashboard && (
           <nav className="border-t border-gray-200 px-4 py-3">
             <div className="flex flex-wrap gap-2 md:gap-4">
-              <Link
-                to="/owner-dashboard/profile"
-                className={getSubNavLinkClass("/owner-dashboard/profile")}
-              >
-                <User className="h-4 w-4" />{" "}
-                <span className="hidden sm:inline">Dashboard</span>
+              <Link to="/owner-dashboard/profile" className={getSubNavLinkClass("/owner-dashboard/profile")}>
+                <User className="h-4 w-4" /> <span className="hidden sm:inline">Dashboard</span>
               </Link>
-              <Link
-                to="/owner-dashboard/add-land"
-                className={getSubNavLinkClass("/owner-dashboard/add-land")}
-              >
-                <PlusCircle className="h-4 w-4" />{" "}
-                <span className="hidden sm:inline">Add Land</span>
+              <Link to="/owner-dashboard/add-land" className={getSubNavLinkClass("/owner-dashboard/add-land")}>
+                <PlusCircle className="h-4 w-4" /> <span className="hidden sm:inline">Add Land</span>
               </Link>
-              <Link
-                to="/owner-dashboard/my-lands"
-                className={getSubNavLinkClass("/owner-dashboard/my-lands")}
-              >
-                <Map className="h-4 w-4" />{" "}
-                <span className="hidden sm:inline">My Lands</span>
+              <Link to="/owner-dashboard/my-lands" className={getSubNavLinkClass("/owner-dashboard/my-lands")}>
+                <Map className="h-4 w-4" /> <span className="hidden sm:inline">My Lands</span>
               </Link>
-              <Link
-                to="/owner-dashboard/received-requests"
-                className={getSubNavLinkClass(
-                  "/owner-dashboard/received-requests"
-                )}
-              >
-                <MessageSquare className="h-4 w-4" />{" "}
-                <span className="hidden sm:inline">Requests</span>
+              <Link to="/owner-dashboard/verification" className={getSubNavLinkClass("/owner-dashboard/verification")}>
+                <MessageSquare className="h-4 w-4" /> <span className="hidden sm:inline">Verification</span>
               </Link>
-              <Link
-                to="/owner-dashboard/requests"
-                className={getSubNavLinkClass("/owner-dashboard/requests")}
-              >
-                <Send className="h-4 w-4" />{" "}
-                <span className="hidden sm:inline">Sent</span>
+              <Link to="/owner-dashboard/requests" className={getSubNavLinkClass("/owner-dashboard/requests")}>
+                <Send className="h-4 w-4" /> <span className="hidden sm:inline">Sent</span>
               </Link>
               <button
                 onClick={handleLogout}
                 className="flex items-center space-x-2 px-4 py-2 rounded-lg text-red-600 hover:bg-red-100 transition-colors"
               >
-                <LogOut className="h-4 w-4" />{" "}
-                <span className="hidden sm:inline">Logout</span>
+                <LogOut className="h-4 w-4" /> <span className="hidden sm:inline">Logout</span>
               </button>
             </div>
           </nav>
         )}
+
         {isBuyerDashboard && (
           <nav className="border-t border-gray-200 px-4 py-3">
             <div className="flex flex-wrap gap-2 md:gap-4">
               {buyerNavItems.map((item) => (
-                <Link
-                  key={item.path}
-                  to={item.path}
-                  className={getSubNavLinkClass(item.path)}
-                >
-                  {item.icon}{" "}
-                  <span className="hidden sm:inline">{item.name}</span>
+                <Link key={item.path} to={item.path} className={getSubNavLinkClass(item.path)}>
+                  {item.icon} <span className="hidden sm:inline">{item.name}</span>
                 </Link>
               ))}
               <button
                 onClick={handleLogout}
                 className="flex items-center space-x-2 px-4 py-2 rounded-lg text-red-600 hover:bg-red-100 transition-colors"
               >
-                <LogOut className="h-4 w-4" />{" "}
-                <span className="hidden sm:inline">Logout</span>
+                <LogOut className="h-4 w-4" /> <span className="hidden sm:inline">Logout</span>
               </button>
             </div>
           </nav>

@@ -1,29 +1,35 @@
-// src/components/PropertyCard.js
-
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { MapPin, DollarSign, Ruler, CircleUser } from 'lucide-react';
 
 const PropertyCard = ({ property }) => {
-    // A guard clause to prevent crashes if a property is null or undefined
+    // Guard clause to prevent crashes if property is null or undefined
     if (!property) {
         return null;
     }
 
-    // Use optional chaining (?.) for safely accessing nested properties
+    // Use optional chaining for safely accessing nested properties
     const ownerName = property?.owner?.name || 'N/A';
     const ownerEmail = property?.owner?.email || 'N/A';
     
     // Combine address details for a cleaner display
     const displayAddress = `${property.propertyAddress}${property.district ? `, ${property.district}` : ''}`;
     
+    // Fallback image if property.image is missing
+    const fallbackImage = 'https://via.placeholder.com/800x400?text=No+Image+Available';
+
     return (
         <div className="bg-white rounded-xl shadow-lg overflow-hidden flex flex-col transition-all duration-300 hover:shadow-2xl hover:-translate-y-1">
-            
-            {/* You can add a placeholder for a property image here */}
-            <div className="bg-gray-200 h-48 w-full flex items-center justify-center text-gray-400">
-                 {/* Example: <img src={property.imageUrl} alt="Property" className="w-full h-full object-cover" /> */}
-                 <span>Property Image</span>
+            {/* Property Image */}
+            <div className="h-48 w-full">
+                <img
+                    src={property.image || fallbackImage}
+                    alt={displayAddress || 'Property Image'}
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                        e.target.src = fallbackImage; // Fallback if image fails to load
+                    }}
+                />
             </div>
 
             <div className="p-6 flex flex-col flex-grow">
@@ -48,7 +54,7 @@ const PropertyCard = ({ property }) => {
 
                 {/* Owner Information */}
                 <div className="mb-5">
-                    <h4 className="text-sm font-semibold text-gray-500 mb-2">LISTED BY</h4>
+                    <h4 className="text-sm font-semibold text-gray-500 mb-2">OWNED BY</h4>
                     <div className="flex items-center space-x-3">
                         <CircleUser className="w-10 h-10 text-gray-400" />
                         <div>

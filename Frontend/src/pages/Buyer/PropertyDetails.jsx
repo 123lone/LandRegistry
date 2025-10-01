@@ -25,6 +25,7 @@ const PropertyDetailsPage = () => {
                 });
                 if (!response.ok) {
                     const errorData = await response.json();
+
                     throw new Error(errorData.message || 'Failed to fetch property details');
                 }
                 const data = await response.json();
@@ -122,6 +123,7 @@ const PropertyDetailsPage = () => {
 
             // Confirm sale in backend
             console.log('Property ID:', property._id);
+            const priceInWei = ethers.parseEther(property.price.toString());
             console.log('Making API call to:', `http://localhost:5000/api/properties/${property._id}/confirm-sale`);
 
             const response = await fetch(`http://localhost:5000/api/properties/${property._id}/confirm-sale`, {
@@ -134,7 +136,8 @@ const PropertyDetailsPage = () => {
                 credentials: 'include',
                 body: JSON.stringify({ 
                     buyerWalletAddress: userWallet, 
-                    transactionHash: tx.hash 
+                    transactionHash: tx.hash ,
+                    
                 })
             });
 

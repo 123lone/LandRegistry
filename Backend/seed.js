@@ -12,7 +12,8 @@ const adminAccount = [
     phone: '9999999999',
     password: 'AdminPassword123!', // Will be hashed by pre-save hook
     role: 'Verifier',
-    kycStatus: 'verified'
+    kycStatus: 'verified',
+    walletAddress: '0x8dfe89d207f4f79d213da82a526bbf2233509486'
   }
 ];
 

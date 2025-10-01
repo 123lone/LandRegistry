@@ -26,7 +26,7 @@ export const registerUser = async (req, res) => {
 
 
 export const updateUserWallet = async (req, res) => {
-    console.log('req.user:', req.user);
+  console.log('req.user:', req.user);
   try {
     console.log('--- PATCH /api/users/wallet ---');
     console.log('Body:', req.body);
@@ -40,8 +40,8 @@ export const updateUserWallet = async (req, res) => {
       });
     }
 
-    const { walletAddress } = req.body;
-    walletAddress=walletAddress.toLowerCase();
+    let { walletAddress } = req.body;
+    walletAddress = walletAddress?.toLowerCase();
 
     // Validate wallet format
     if (!walletAddress || !/^0x[a-fA-F0-9]{40}$/.test(walletAddress)) {
@@ -89,14 +89,13 @@ export const updateUserWallet = async (req, res) => {
     });
   } catch (error) {
     console.error('[CRITICAL ERROR in updateUserWallet]:', error);
-
-    // Always return JSON on error
     return res.status(500).json({
       success: false,
       message: 'Server Error: ' + error.message
     });
   }
 };
+
 export const loginUser = async (req, res) => {
   const { email, password } = req.body;
   console.log("Login request body:", req.body);

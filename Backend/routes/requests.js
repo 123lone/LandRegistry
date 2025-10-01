@@ -23,5 +23,21 @@ router.post('/:id/withdraw', withdrawFunds);  // <-- use withdrawFunds
 router.post('/:id/reject', rejectTrade);
 router.get('/by-token/:tokenId', getPropertyByTokenId);
 router.get('/my-sales', protect, getSellerSales);
+// app.get('/api/requests/pending-offers/:sellerAddress', async (req, res) => {
+//   try {
+//     const { sellerAddress } = req.params;
+    
+//     // Query your database for pending purchase requests
+//     const pendingOffers = await PurchaseRequest.find({
+//       seller: sellerAddress,
+//       status: 'pending' // or whatever status indicates active offers
+//     });
+    
+//     res.json(pendingOffers);
+//   } catch (error) {
+
+//     res.status(500).json({ error: 'Failed to fetch pending offers' });
+//   }
+// });
 
 export default router;

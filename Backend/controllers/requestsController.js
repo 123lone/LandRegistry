@@ -198,3 +198,19 @@ export const getSellerSales = async (req, res) => {
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
+// In your backend routes
+// app.get('/api/requests/pending-offers/:sellerAddress', async (req, res) => {
+//   try {
+//     const { sellerAddress } = req.params;
+    
+//     // Query your database for pending purchase requests
+//     const pendingOffers = await PurchaseRequest.find({
+//       seller: sellerAddress,
+//       status: 'pending' // or whatever status indicates active offers
+//     });
+    
+//     res.json(pendingOffers);
+//   } catch (error) {
+//     res.status(500).json({ error: 'Failed to fetch pending offers' });
+//   }
+// });

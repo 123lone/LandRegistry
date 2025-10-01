@@ -1,4 +1,3 @@
-// models/propertyModel.js
 import mongoose from 'mongoose';
 
 const propertySchema = new mongoose.Schema({
@@ -20,28 +19,14 @@ const propertySchema = new mongoose.Schema({
   },
   owner: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   verifier: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-  
-  // ✅ New ownership history fields
-  previousOwner: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
-    default: null
-  },
-  soldAt: {
-    type: Date,
-    default: null
-  },
-  soldPrice: {
-    type: Number,
-    default: null
-  },
-  transactionHash: {
-    type: String,
-    default: null
-  },
-  
-  // ✅ Existing field for withdrawals
+  previousOwner: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+  soldAt: { type: Date, default: null },
+  soldPrice: { type: Number, default: null },
+  transactionHash: { type: String, default: null },
   isWithdrawn: { type: Boolean, default: false },
 }, { timestamps: true });
+
+// ✅ Create a unique index on district + surveyNumber
+propertySchema.index({ district: 1, surveyNumber: 1 }, { unique: true });
 
 export default mongoose.model('Property', propertySchema);

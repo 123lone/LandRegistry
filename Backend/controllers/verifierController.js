@@ -18,7 +18,7 @@ export const getVerifiedUsers = async (req, res) => {
   try {
     const verifiedUsers = await User.find({
       kycStatus: 'verified',
-      role: { $in: ['Owner', 'Land Owner', 'Buyer'] } // <-- filter here
+      role: { $in: ['Owner'] } // <-- filter here
     })
       .select('-password')
       .sort({ updatedAt: -1 }); // most recently updated first
